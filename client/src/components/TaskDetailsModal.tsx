@@ -46,11 +46,22 @@ export default function TaskDetailsModal({
 
   // Проверяем, есть ли вложения у задачи
   const hasAttachments = (() => {
-    if (!task || !task.attachments) return false;
+    if (!task || !task.attachments) {
+      console.log('No task or attachments:', { task: !!task, attachments: task?.attachments });
+      return false;
+    }
     try {
-      const parsed = JSON.parse(task.attachments);
-      return parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0;
+      const parsed = typeof task.attachments === 'string' ? JSON.parse(task.attachments) : task.attachments;
+      const hasFiles = parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0;
+      console.log('Checking attachments:', { 
+        taskId: task.id, 
+        attachments: task.attachments, 
+        parsed, 
+        hasFiles 
+      });
+      return hasFiles;
     } catch (e) {
+      console.warn('Failed to parse attachments for hasAttachments:', e, task.attachments);
       return false;
     }
   })();
@@ -58,8 +69,11 @@ export default function TaskDetailsModal({
   // Загружаем задачу с вложением, если есть вложения
   const { data: taskWithAttachment, isLoading: loadingAttachment } = useQuery({
     queryKey: ["/api/tasks/with-attachment", task?.id],
-    queryFn: () => task ? tasksApi.getWithAttachment(task.id) : null,
-    enabled: !!task && hasAttachments,
+    queryFn: () => {
+      console.log('Fetching task with attachment:', { taskId: task?.id, hasAttachments });
+      return task ? tasksApi.getWithAttachment(task.id) : null;
+    },
+    enabled: !!task && hasAttachments && open,
   });
 
   const deleteTaskMutation = useMutation({
@@ -121,10 +135,27 @@ export default function TaskDetailsModal({
 
   if (!task) return null;
 
+  // Вспомогательная функция для безопасного парсинга attachments
+  const parseAttachments = (attachments: any) => {
+    if (!attachments) return {};
+    if (typeof attachments === 'object' && !Array.isArray(attachments)) {
+      return attachments; // Уже объект
+    }
+    if (typeof attachments === 'string') {
+      try {
+        return JSON.parse(attachments);
+      } catch (e) {
+        console.warn('Failed to parse attachments JSON:', e, attachments);
+        return {};
+      }
+    }
+    return {};
+  };
+
   const attachments = (() => {
     try {
       if (!task.attachments) return [];
-      const parsed = JSON.parse(task.attachments);
+      const parsed = typeof task.attachments === 'string' ? JSON.parse(task.attachments) : task.attachments;
       // API возвращает объект с файлами, а не массив
       if (typeof parsed === 'object' && !Array.isArray(parsed)) {
         return Object.entries(parsed).map(([name, details]: [string, any]) => ({
@@ -341,31 +372,41 @@ export default function TaskDetailsModal({
                 {taskWithAttachment.attachment.content_base64 && (
                   <div className="flex flex-col items-center space-y-4">
                     {/* Отображаем изображение, если это изображение */}
-                    {taskWithAttachment.task.attachments && 
-                     JSON.parse(taskWithAttachment.task.attachments)[taskWithAttachment.attachment.filename]?.content_type?.startsWith('image/') && (
-                      <img 
-                        src={`data:${JSON.parse(taskWithAttachment.task.attachments)[taskWithAttachment.attachment.filename].content_type};base64,${taskWithAttachment.attachment.content_base64}`}
-                        alt={taskWithAttachment.attachment.filename}
-                        className="max-w-full max-h-96 object-contain rounded-lg border"
-                        data-testid="attachment-image"
-                      />
-                    )}
+                    {(() => {
+                      const parsedAttachments = parseAttachments(taskWithAttachment.task.attachments);
+                      const attachment = parsedAttachments[taskWithAttachment.attachment.filename];
+                      return attachment?.content_type?.startsWith('image/') && (
+                        <img 
+                          src={`data:${attachment.content_type};base64,${taskWithAttachment.attachment.content_base64}`}
+                          alt={taskWithAttachment.attachment.filename}
+                          className="max-w-full max-h-96 object-contain rounded-lg border"
+                          data-testid="attachment-image"
+                        />
+                      );
+                    })()}
                     
                     {/* Информация о файле */}
-                    <div className="text-sm text-muted-foreground text-center">
-                      <p>Размер: {JSON.parse(taskWithAttachment.task.attachments)[taskWithAttachment.attachment.filename]?.length ? 
-                        Math.round(JSON.parse(taskWithAttachment.task.attachments)[taskWithAttachment.attachment.filename].length / 1024) + ' KB' : 
-                        'Неизвестен'}
-                      </p>
-                      <p>Тип: {JSON.parse(taskWithAttachment.task.attachments)[taskWithAttachment.attachment.filename]?.content_type || 'Неизвестен'}</p>
-                    </div>
+                    {(() => {
+                      const parsedAttachments = parseAttachments(taskWithAttachment.task.attachments);
+                      const attachment = parsedAttachments[taskWithAttachment.attachment.filename];
+                      return (
+                        <div className="text-sm text-muted-foreground text-center">
+                          <p>Размер: {attachment?.length ? 
+                            Math.round(attachment.length / 1024) + ' KB' : 
+                            'Неизвестен'}
+                          </p>
+                          <p>Тип: {attachment?.content_type || 'Неизвестен'}</p>
+                        </div>
+                      );
+                    })()}
                     
                     {/* Кнопка скачивания */}
                     <Button 
                       variant="outline"
                       onClick={() => {
                         const content = taskWithAttachment.attachment.content_base64;
-                        const contentType = JSON.parse(taskWithAttachment.task.attachments)[taskWithAttachment.attachment.filename]?.content_type || 'application/octet-stream';
+                        const parsedAttachments = parseAttachments(taskWithAttachment.task.attachments);
+                        const contentType = parsedAttachments[taskWithAttachment.attachment.filename]?.content_type || 'application/octet-stream';
                         const byteCharacters = atob(content);
                         const byteNumbers = new Array(byteCharacters.length);
                         for (let i = 0; i < byteCharacters.length; i++) {
