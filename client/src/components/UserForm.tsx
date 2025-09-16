@@ -59,10 +59,25 @@ export default function UserForm({ open, onOpenChange, user }: UserFormProps) {
       onOpenChange(false);
       form.reset();
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error('Create user error:', error);
+      let errorMessage = "Не удалось создать пользователя";
+      
+      // Check for validation errors (422)
+      if (error?.response?.status === 422) {
+        try {
+          const body = JSON.parse(error.response.body);
+          if (body?.detail) {
+            errorMessage = "Ошибка валидации данных. Проверьте правильность заполнения полей.";
+          }
+        } catch (e) {
+          errorMessage = "Проверьте правильность введенных данных";
+        }
+      }
+      
       toast({
         title: "Ошибка",
-        description: "Не удалось создать пользователя",
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -79,10 +94,25 @@ export default function UserForm({ open, onOpenChange, user }: UserFormProps) {
       });
       onOpenChange(false);
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error('Update user error:', error);
+      let errorMessage = "Не удалось обновить пользователя";
+      
+      // Check for validation errors (422)
+      if (error?.response?.status === 422) {
+        try {
+          const body = JSON.parse(error.response.body);
+          if (body?.detail) {
+            errorMessage = "Ошибка валидации данных. Проверьте правильность заполнения полей.";
+          }
+        } catch (e) {
+          errorMessage = "Проверьте правильность введенных данных";
+        }
+      }
+      
       toast({
         title: "Ошибка",
-        description: "Не удалось обновить пользователя",
+        description: errorMessage,
         variant: "destructive",
       });
     },

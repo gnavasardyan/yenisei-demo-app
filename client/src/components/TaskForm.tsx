@@ -55,7 +55,7 @@ export default function TaskForm({ open, onOpenChange, task, users }: TaskFormPr
       name: task?.name || "",
       description: task?.description || "",
       status: task?.status || "created",
-      user_id: task?.user_id || "",
+      user_id: task?.user_id || "unassigned",
     },
   });
 
@@ -120,10 +120,16 @@ export default function TaskForm({ open, onOpenChange, task, users }: TaskFormPr
   });
 
   const onSubmit = (data: TaskFormData) => {
+    // Handle unassigned user_id
+    const taskData = {
+      ...data,
+      user_id: data.user_id === "unassigned" ? undefined : data.user_id
+    };
+    
     if (task) {
-      updateTaskMutation.mutate({ id: task.id, data });
+      updateTaskMutation.mutate({ id: task.id, data: taskData });
     } else {
-      createTaskMutation.mutate(data);
+      createTaskMutation.mutate(taskData);
     }
   };
 
@@ -223,7 +229,7 @@ export default function TaskForm({ open, onOpenChange, task, users }: TaskFormPr
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Не назначен</SelectItem>
+                        <SelectItem value="unassigned">Не назначен</SelectItem>
                         {users.map((user) => (
                           <SelectItem key={user.id} value={user.id}>
                             {user.username}
@@ -237,6 +243,7 @@ export default function TaskForm({ open, onOpenChange, task, users }: TaskFormPr
               />
             </div>
 
+            {/* Временно отключено - загрузка файлов в разработке
             {task && (
               <div>
                 <FormLabel>Вложения</FormLabel>
@@ -263,6 +270,7 @@ export default function TaskForm({ open, onOpenChange, task, users }: TaskFormPr
                 </div>
               </div>
             )}
+            */}
 
             <DialogFooter className="flex justify-end space-x-3">
               <Button
