@@ -1,10 +1,13 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import StatsCard from "@/components/StatsCard";
+import TaskDetailsModal from "@/components/TaskDetailsModal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { dashboardApi, tasksApi, usersApi } from "@/lib/api";
 import type { TaskWithUser, UserWithStats } from "@/lib/types";
 import { 
@@ -22,6 +25,12 @@ const statusConfig = {
 };
 
 export default function Dashboard() {
+  const [taskDetailsOpen, setTaskDetailsOpen] = useState(false);
+  const [userTasksOpen, setUserTasksOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<TaskWithUser | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserWithStats | null>(null);
+  const [userTasks, setUserTasks] = useState<TaskWithUser[]>([]);
+
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["/api/dashboard/stats"],
     queryFn: dashboardApi.getStats,
@@ -54,6 +63,29 @@ export default function Dashboard() {
       }
     };
   }).slice(0, 5);
+
+  const handleTaskClick = (task: TaskWithUser) => {
+    setSelectedTask(task);
+    setTaskDetailsOpen(true);
+  };
+
+  const handleUserClick = (user: UserWithStats) => {
+    const userTasksList = tasks.filter(task => task.user_id === user.id);
+    setUserTasks(userTasksList);
+    setSelectedUser(user);
+    setUserTasksOpen(true);
+  };
+
+  const handleCloseTaskDetails = () => {
+    setTaskDetailsOpen(false);
+    setSelectedTask(null);
+  };
+
+  const handleCloseUserTasks = () => {
+    setUserTasksOpen(false);
+    setSelectedUser(null);
+    setUserTasks([]);
+  };
 
   if (statsLoading) {
     return (
@@ -128,8 +160,9 @@ export default function Dashboard() {
               recentTasks.map((task) => (
                 <div
                   key={task.id}
-                  className="p-4 border-b border-border last:border-b-0 hover:bg-muted/50 transition-colors"
+                  className="p-4 border-b border-border last:border-b-0 hover:bg-muted/50 transition-colors cursor-pointer"
                   data-testid={`recent-task-${task.id}`}
+                  onClick={() => handleTaskClick(task)}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
@@ -191,8 +224,9 @@ export default function Dashboard() {
               usersWithStats.map((user) => (
                 <div
                   key={user.id}
-                  className="p-4 border-b border-border last:border-b-0 hover:bg-muted/50 transition-colors"
+                  className="p-4 border-b border-border last:border-b-0 hover:bg-muted/50 transition-colors cursor-pointer"
                   data-testid={`active-user-${user.id}`}
+                  onClick={() => handleUserClick(user)}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
@@ -225,6 +259,63 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Task Details Modal */}
+      <TaskDetailsModal
+        open={taskDetailsOpen}
+        onOpenChange={handleCloseTaskDetails}
+        task={selectedTask}
+      />
+
+      {/* User Tasks Modal */}
+      <Dialog open={userTasksOpen} onOpenChange={handleCloseUserTasks}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" data-testid="user-tasks-modal">
+          <DialogHeader>
+            <DialogTitle>
+              Задачи пользователя {selectedUser?.username}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-6">
+            {userTasks.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                У пользователя пока нет задач
+              </div>
+            ) : (
+              userTasks.map((task) => (
+                <div
+                  key={task.id}
+                  className="p-4 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                  onClick={() => {
+                    setSelectedTask(task);
+                    setUserTasksOpen(false);
+                    setTaskDetailsOpen(true);
+                  }}
+                  data-testid={`user-task-${task.id}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <h4 className="font-medium mb-1">{task.name}</h4>
+                      {task.description && (
+                        <p className="text-sm text-muted-foreground mb-2">
+                          {task.description}
+                        </p>
+                      )}
+                      <div className="flex items-center space-x-2">
+                        <Badge className={statusConfig[task.status].color}>
+                          {statusConfig[task.status].label}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {task.created_at ? new Date(task.created_at).toLocaleDateString("ru-RU") : "—"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
