@@ -83,16 +83,27 @@ export default function TaskForm({ open, onOpenChange, task, users }: TaskFormPr
   const createTaskMutation = useMutation({
     mutationFn: tasksApi.create,
     onSuccess: async (newTask) => {
+      console.log("Task created successfully:", newTask);
+      console.log("Pending files to upload:", pendingFiles);
+      
       // Загрузить файлы если есть
       if (pendingFiles.length > 0) {
+        console.log(`Starting upload of ${pendingFiles.length} files for task ID: ${newTask.id}`);
         setUploading(true);
         try {
           for (const file of pendingFiles) {
+            console.log(`Uploading file: ${file.name}`);
             await tasksApi.uploadAttachment(newTask.id, file);
+            console.log(`Successfully uploaded: ${file.name}`);
           }
           setPendingFiles([]);
         } catch (error) {
           console.error("File upload error:", error);
+          toast({
+            title: "Ошибка загрузки файлов",
+            description: "Файлы не удалось загрузить: " + (error as Error).message,
+            variant: "destructive",
+          });
         } finally {
           setUploading(false);
         }
