@@ -88,12 +88,16 @@ export default function TaskForm({ open, onOpenChange, task, users }: TaskFormPr
       
       // Загрузить файлы если есть
       if (pendingFiles.length > 0) {
-        console.log(`Starting upload of ${pendingFiles.length} files for task ID: ${newTask.id}`);
+        // API возвращает объект с task внутри, где находится _id вместо id  
+        const task = (newTask as any).task || newTask;
+        const taskId = task.id || task._id;
+        console.log("Task object:", task, "taskId:", taskId);
+        console.log(`Starting upload of ${pendingFiles.length} files for task ID: ${taskId}`);
         setUploading(true);
         try {
           for (const file of pendingFiles) {
             console.log(`Uploading file: ${file.name}`);
-            await tasksApi.uploadAttachment(newTask.id, file);
+            await tasksApi.uploadAttachment(taskId, file);
             console.log(`Successfully uploaded: ${file.name}`);
           }
           setPendingFiles([]);

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import StatsCard from "@/components/StatsCard";
 import TaskDetailsModal from "@/components/TaskDetailsModal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,6 +31,7 @@ export default function Dashboard() {
   const [selectedTask, setSelectedTask] = useState<TaskWithUser | null>(null);
   const [selectedUser, setSelectedUser] = useState<UserWithStats | null>(null);
   const [userTasks, setUserTasks] = useState<TaskWithUser[]>([]);
+  const [, setLocation] = useLocation();
 
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["/api/dashboard/stats"],
@@ -140,7 +142,12 @@ export default function Dashboard() {
           <CardHeader className="border-b border-border">
             <div className="flex items-center justify-between">
               <CardTitle>Последние задачи</CardTitle>
-              <Button variant="link" size="sm" data-testid="show-all-tasks">
+              <Button 
+                variant="link" 
+                size="sm" 
+                data-testid="show-all-tasks"
+                onClick={() => setLocation('/tasks')}
+              >
                 Показать все
               </Button>
             </div>
@@ -204,7 +211,12 @@ export default function Dashboard() {
           <CardHeader className="border-b border-border">
             <div className="flex items-center justify-between">
               <CardTitle>Активные пользователи</CardTitle>
-              <Button variant="link" size="sm" data-testid="manage-users">
+              <Button 
+                variant="link" 
+                size="sm" 
+                data-testid="manage-users"
+                onClick={() => setLocation('/users')}
+              >
                 Управление
               </Button>
             </div>
