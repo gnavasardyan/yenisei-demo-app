@@ -16,7 +16,8 @@ export const tasksApi = {
   getAll: async (): Promise<TaskWithUser[]> => {
     const response = await fetch(`${API_BASE}/tasks/`);
     if (!response.ok) throw new Error("Failed to fetch tasks");
-    return response.json();
+    const data = await response.json();
+    return data.tasks || [];
   },
 
   getById: async (id: string): Promise<TaskWithUser> => {
@@ -62,7 +63,8 @@ export const usersApi = {
   getAll: async (): Promise<User[]> => {
     const response = await fetch(`${API_BASE}/users/`);
     if (!response.ok) throw new Error("Failed to fetch users");
-    return response.json();
+    const data = await response.json();
+    return data.users || [];
   },
 
   getById: async (id: string): Promise<User> => {
@@ -88,7 +90,8 @@ export const usersApi = {
   getTasks: async (id: string): Promise<TaskWithUser[]> => {
     const response = await fetch(`${API_BASE}/users/${id}/tasks`);
     if (!response.ok) throw new Error("Failed to fetch user tasks");
-    return response.json();
+    const data = await response.json();
+    return data.tasks || [];
   },
 };
 
