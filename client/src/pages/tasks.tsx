@@ -4,14 +4,17 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import TaskTable from "@/components/TaskTable";
 import TaskForm from "@/components/TaskForm";
+import TaskDetailsModal from "@/components/TaskDetailsModal";
 import { tasksApi, usersApi } from "@/lib/api";
 import type { TaskWithUser } from "@/lib/types";
 import { Plus } from "lucide-react";
 
 export default function Tasks() {
   const [taskFormOpen, setTaskFormOpen] = useState(false);
+  const [taskDetailsOpen, setTaskDetailsOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskWithUser | undefined>();
   const [assigningTask, setAssigningTask] = useState<TaskWithUser | undefined>();
+  const [viewingTask, setViewingTask] = useState<TaskWithUser | undefined>();
 
   const { data: tasks = [], isLoading: tasksLoading } = useQuery({
     queryKey: ["/api/tasks/"],
@@ -34,10 +37,25 @@ export default function Tasks() {
     setTaskFormOpen(true);
   };
 
+  const handleViewTask = (task: TaskWithUser) => {
+    setViewingTask(task);
+    setTaskDetailsOpen(true);
+  };
+
+  const handleEditFromDetails = (task: TaskWithUser) => {
+    setEditingTask(task);
+    setTaskFormOpen(true);
+  };
+
   const handleCloseForm = () => {
     setTaskFormOpen(false);
     setEditingTask(undefined);
     setAssigningTask(undefined);
+  };
+
+  const handleCloseDetails = () => {
+    setTaskDetailsOpen(false);
+    setViewingTask(undefined);
   };
 
   if (tasksLoading || usersLoading) {
@@ -76,6 +94,7 @@ export default function Tasks() {
         users={users}
         onEditTask={handleEditTask}
         onAssignTask={handleAssignTask}
+        onViewTask={handleViewTask}
       />
 
       <TaskForm
@@ -83,6 +102,13 @@ export default function Tasks() {
         onOpenChange={handleCloseForm}
         task={editingTask}
         users={users}
+      />
+
+      <TaskDetailsModal
+        open={taskDetailsOpen}
+        onOpenChange={handleCloseDetails}
+        task={viewingTask || null}
+        onEditTask={handleEditFromDetails}
       />
     </div>
   );

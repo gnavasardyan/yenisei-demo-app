@@ -46,6 +46,7 @@ interface TaskFormProps {
 
 export default function TaskForm({ open, onOpenChange, task, users }: TaskFormProps) {
   const [uploading, setUploading] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -61,7 +62,22 @@ export default function TaskForm({ open, onOpenChange, task, users }: TaskFormPr
 
   const createTaskMutation = useMutation({
     mutationFn: tasksApi.create,
-    onSuccess: () => {
+    onSuccess: async (newTask) => {
+      // Загрузить файлы если есть
+      if (pendingFiles.length > 0) {
+        setUploading(true);
+        try {
+          for (const file of pendingFiles) {
+            await tasksApi.uploadAttachment(newTask.id, file);
+          }
+          setPendingFiles([]);
+        } catch (error) {
+          console.error("File upload error:", error);
+        } finally {
+          setUploading(false);
+        }
+      }
+      
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/"] });
       toast({
         title: "Успех",
@@ -69,6 +85,7 @@ export default function TaskForm({ open, onOpenChange, task, users }: TaskFormPr
       });
       onOpenChange(false);
       form.reset();
+      setPendingFiles([]);
     },
     onError: () => {
       toast({
@@ -145,8 +162,23 @@ export default function TaskForm({ open, onOpenChange, task, users }: TaskFormPr
   const handleLocalFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files) {
-      handleFileUpload(Array.from(files));
+      const fileArray = Array.from(files);
+      if (task) {
+        // Для существующих задач загружаем сразу
+        handleFileUpload(fileArray);
+      } else {
+        // Для новых задач сохраняем до создания
+        setPendingFiles(prev => [...prev, ...fileArray]);
+        toast({
+          title: "Файлы готовы",
+          description: `${fileArray.length} файл(ов) будет загружено после создания задачи`,
+        });
+      }
     }
+  };
+
+  const handleRemovePendingFile = (index: number) => {
+    setPendingFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const isLoading = createTaskMutation.isPending || updateTaskMutation.isPending;
@@ -250,36 +282,61 @@ export default function TaskForm({ open, onOpenChange, task, users }: TaskFormPr
               />
             </div>
 
-            {task && (
-              <div>
-                <FormLabel>Вложения</FormLabel>
-                <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
-                  <CloudUpload className="mx-auto h-12 w-12 text-muted-foreground mb-2" />
-                  <p className="text-muted-foreground mb-2">Перетащите файлы сюда или</p>
-                  <input
-                    type="file"
-                    multiple
-                    accept="*/*"
-                    onChange={handleLocalFileUpload}
-                    className="hidden"
-                    id="file-upload"
-                    data-testid="file-upload-input"
-                  />
-                  <label
-                    htmlFor="file-upload"
-                    className="text-primary hover:underline cursor-pointer inline-block"
-                    data-testid="file-upload-button"
-                  >
-                    выберите файлы
-                  </label>
-                  {uploading && (
-                    <div className="mt-2 text-sm text-muted-foreground">
-                      Загрузка файлов...
-                    </div>
-                  )}
-                </div>
+            <div>
+              <FormLabel>Вложения</FormLabel>
+              <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
+                <CloudUpload className="mx-auto h-12 w-12 text-muted-foreground mb-2" />
+                <p className="text-muted-foreground mb-2">
+                  {task ? "Перетащите файлы сюда или" : "Файлы будут загружены после создания задачи"}
+                </p>
+                <input
+                  type="file"
+                  multiple
+                  accept="*/*"
+                  onChange={handleLocalFileUpload}
+                  className="hidden"
+                  id="file-upload"
+                  data-testid="file-upload-input"
+                />
+                <label
+                  htmlFor="file-upload"
+                  className="text-primary hover:underline cursor-pointer inline-block"
+                  data-testid="file-upload-button"
+                >
+                  выберите файлы
+                </label>
+                {uploading && (
+                  <div className="mt-2 text-sm text-muted-foreground">
+                    Загрузка файлов...
+                  </div>
+                )}
+                
+                {/* Показать ожидающие файлы для новых задач */}
+                {!task && pendingFiles.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-sm font-medium">Готовы к загрузке:</p>
+                    {pendingFiles.map((file, index) => (
+                      <div 
+                        key={index}
+                        className="flex items-center justify-between p-2 bg-muted rounded text-sm"
+                        data-testid={`pending-file-${index}`}
+                      >
+                        <span className="truncate">{file.name}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemovePendingFile(index)}
+                          data-testid={`remove-pending-file-${index}`}
+                        >
+                          ✕
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
+            </div>
 
             <DialogFooter className="flex justify-end space-x-3">
               <Button

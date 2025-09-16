@@ -16,6 +16,7 @@ interface TaskTableProps {
   users: User[];
   onEditTask: (task: TaskWithUser) => void;
   onAssignTask: (task: TaskWithUser) => void;
+  onViewTask: (task: TaskWithUser) => void;
 }
 
 const statusConfig = {
@@ -24,7 +25,7 @@ const statusConfig = {
   done: { label: "Выполнена", color: "bg-success/10 text-success" },
 };
 
-export default function TaskTable({ tasks, users, onEditTask, onAssignTask }: TaskTableProps) {
+export default function TaskTable({ tasks, users, onEditTask, onAssignTask, onViewTask }: TaskTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [userFilter, setUserFilter] = useState<string>("all");
@@ -136,7 +137,11 @@ export default function TaskTable({ tasks, users, onEditTask, onAssignTask }: Ta
                   >
                     <td className="p-4">
                       <div>
-                        <div className="font-medium mb-1" data-testid={`task-name-${task.id}`}>
+                        <div 
+                          className="font-medium mb-1 cursor-pointer hover:text-primary transition-colors" 
+                          data-testid={`task-name-${task.id}`}
+                          onClick={() => onViewTask(task)}
+                        >
                           {task.name}
                         </div>
                         {task.description && (
