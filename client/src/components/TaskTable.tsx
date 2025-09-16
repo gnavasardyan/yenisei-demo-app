@@ -176,18 +176,22 @@ export default function TaskTable({ tasks, users, onEditTask, onAssignTask, onVi
                       </Badge>
                     </td>
                     <td className="p-4">
-                      {task.user ? (
-                        <div className="flex items-center space-x-2" data-testid={`task-user-${task.id}`}>
-                          <Avatar className="w-8 h-8">
-                            <AvatarFallback className="text-xs">
-                              {task.user.username.charAt(0).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="text-sm">{task.user.username}</span>
-                        </div>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">Не назначен</span>
-                      )}
+                      {(() => {
+                        // Найти пользователя по task.user_id
+                        const assignedUser = task.user || users.find(u => u.id === task.user_id);
+                        return assignedUser ? (
+                          <div className="flex items-center space-x-2" data-testid={`task-user-${task.id}`}>
+                            <Avatar className="w-8 h-8">
+                              <AvatarFallback className="text-xs">
+                                {assignedUser.username.charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-sm">{assignedUser.username}</span>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">Не назначен</span>
+                        );
+                      })()}
                     </td>
                     <td className="p-4">
                       <div className="text-sm text-muted-foreground" data-testid={`task-date-${task.id}`}>

@@ -80,31 +80,13 @@ export default function TaskDetailsModal({
   const { data: taskUserResponse, isLoading: loadingUser, error: userError } = useQuery({
     queryKey: ["/api/users/", task?.user_id],
     queryFn: () => {
-      console.log('Fetching user for task:', { taskId: task?.id, userId: task?.user_id });
       return task?.user_id ? usersApi.getById(task.user_id) : null;
     },
     enabled: !!task?.user_id && open && !task.user, // Загружаем только если пользователь не загружен
-    onSuccess: (data) => {
-      console.log('User loaded successfully:', data);
-    },
-    onError: (error) => {
-      console.error('Error loading user:', error);
-    }
   });
 
   // Извлекаем пользователя из ответа API (может быть вложенным)
   const taskUser = taskUserResponse?.user || taskUserResponse;
-
-  // Добавим логирование для отладки отображения
-  console.log('TaskDetailsModal render:', {
-    taskId: task?.id,
-    taskUserId: task?.user_id,
-    taskUserObject: task?.user,
-    loadedUser: taskUser,
-    loadingUser,
-    userError,
-    shouldLoadUser: !!task?.user_id && open && !task.user
-  });
 
   const deleteTaskMutation = useMutation({
     mutationFn: tasksApi.delete,
@@ -255,9 +237,6 @@ export default function TaskDetailsModal({
                         </AvatarFallback>
                       </Avatar>
                       <span className="text-sm">{task.user?.username || taskUser?.username}</span>
-                      <span className="text-xs text-muted-foreground ml-1">
-                        [Debug: user={JSON.stringify(task.user)}, taskUser={JSON.stringify(taskUser)}]
-                      </span>
                     </>
                   ) : task.user_id ? (
                     <span className="text-sm text-muted-foreground">Пользователь #{task.user_id}</span>

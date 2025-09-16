@@ -77,7 +77,6 @@ export const usersApi = {
     const response = await fetch(`${API_BASE}/users/${id}`);
     if (!response.ok) throw new Error("Failed to fetch user");
     const data = await response.json();
-    console.log('User API response for ID', id, ':', data);
     // API может возвращать объект с полем user внутри
     return data.user || data;
   },
