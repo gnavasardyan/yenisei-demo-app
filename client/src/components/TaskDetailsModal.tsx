@@ -104,7 +104,16 @@ export default function TaskDetailsModal({
 
   const attachments = (() => {
     try {
-      return task.attachments ? JSON.parse(task.attachments) : [];
+      if (!task.attachments) return [];
+      const parsed = JSON.parse(task.attachments);
+      // API возвращает объект с файлами, а не массив
+      if (typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return Object.entries(parsed).map(([name, details]: [string, any]) => ({
+          name,
+          ...details
+        }));
+      }
+      return Array.isArray(parsed) ? parsed : [];
     } catch (e) {
       console.warn("Failed to parse attachments JSON:", task.attachments);
       return [];

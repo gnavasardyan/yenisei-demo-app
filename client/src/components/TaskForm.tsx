@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -53,12 +53,32 @@ export default function TaskForm({ open, onOpenChange, task, users }: TaskFormPr
   const form = useForm<TaskFormData>({
     resolver: zodResolver(taskSchema),
     defaultValues: {
-      name: task?.name || "",
-      description: task?.description || "",
-      status: task?.status || "created",
-      user_id: task?.user_id || "unassigned",
+      name: "",
+      description: "",
+      status: "created",
+      user_id: "unassigned",
     },
   });
+
+  // Обновляем форму когда task меняется
+  useEffect(() => {
+    if (task) {
+      form.reset({
+        name: task.name || "",
+        description: task.description || "",
+        status: task.status || "created",
+        user_id: task.user_id || "unassigned",
+      });
+    } else {
+      form.reset({
+        name: "",
+        description: "",
+        status: "created",
+        user_id: "unassigned",
+      });
+      setPendingFiles([]);
+    }
+  }, [task, form]);
 
   const createTaskMutation = useMutation({
     mutationFn: tasksApi.create,

@@ -25,16 +25,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       headers['Content-Type'] = 'application/json';
     }
     
-    // Prepare body: handle different content types
+    // Handle multipart uploads specially
+    if (req.method !== 'GET' && req.method !== 'HEAD' && req.headers['content-type']?.includes('multipart/form-data')) {
+      console.log('Proxying multipart request to:', targetUrl);
+      
+      // For multipart, we need to collect raw body and forward it
+      const chunks: Buffer[] = [];
+      req.on('data', chunk => chunks.push(chunk));
+      req.on('end', () => {
+        const buffer = Buffer.concat(chunks);
+        
+        fetch(targetUrl, {
+          method: req.method,
+          headers,
+          body: buffer,
+        })
+        .then(response => {
+          res.status(response.status);
+          if (response.headers.get('content-type')?.includes('application/json')) {
+            return response.json().then(data => res.json(data));
+          } else {
+            return response.text().then(text => res.send(text));
+          }
+        })
+        .catch(error => {
+          console.error('Multipart proxy error:', error);
+          res.status(500).json({ error: 'Multipart upload failed' });
+        });
+      });
+      return; // Don't continue with regular fetch
+    }
+    
+    // Prepare body for non-multipart requests
     let body: any;
     if (req.method !== 'GET' && req.method !== 'HEAD' && req.body) {
       const contentType = req.headers['content-type'];
       if (contentType?.includes('application/json')) {
         body = JSON.stringify(req.body);
-      } else if (contentType?.includes('multipart/form-data')) {
-        // For multipart, we need to stream the raw body
-        // This will be handled differently - the body is already parsed by multer
-        body = req.body;
       } else {
         body = req.body;
       }
