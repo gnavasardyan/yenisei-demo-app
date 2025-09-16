@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { tasksApi } from "@/lib/api";
+import { tasksApi, usersApi } from "@/lib/api";
 import type { TaskWithUser } from "@/lib/types";
 import { 
   Calendar, 
@@ -74,6 +74,16 @@ export default function TaskDetailsModal({
       return task ? tasksApi.getWithAttachment(task.id) : null;
     },
     enabled: !!task && hasAttachments && open,
+  });
+
+  // Загружаем данные пользователя, если у задачи есть user_id
+  const { data: taskUser, isLoading: loadingUser } = useQuery({
+    queryKey: ["/api/users/", task?.user_id],
+    queryFn: () => {
+      console.log('Fetching user for task:', { taskId: task?.id, userId: task?.user_id });
+      return task?.user_id ? usersApi.getById(task.user_id) : null;
+    },
+    enabled: !!task?.user_id && open && !task.user, // Загружаем только если пользователь не загружен
   });
 
   const deleteTaskMutation = useMutation({
@@ -215,15 +225,19 @@ export default function TaskDetailsModal({
                   <span className="text-sm font-medium">Исполнитель</span>
                 </div>
                 <div className="mt-2 flex items-center space-x-2">
-                  {task.user ? (
+                  {loadingUser ? (
+                    <span className="text-sm text-muted-foreground">Загрузка...</span>
+                  ) : (task.user || taskUser) ? (
                     <>
                       <Avatar className="w-6 h-6">
                         <AvatarFallback className="text-xs">
-                          {task.user.username.charAt(0).toUpperCase()}
+                          {(task.user?.username || taskUser?.username || 'У').charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="text-sm">{task.user.username}</span>
+                      <span className="text-sm">{task.user?.username || taskUser?.username}</span>
                     </>
+                  ) : task.user_id ? (
+                    <span className="text-sm text-muted-foreground">Пользователь #{task.user_id}</span>
                   ) : (
                     <span className="text-sm text-muted-foreground">Не назначен</span>
                   )}
