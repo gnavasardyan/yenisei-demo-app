@@ -56,6 +56,12 @@ export const tasksApi = {
     
     if (!response.ok) throw new Error("Failed to upload attachment");
   },
+
+  getWithAttachment: async (id: string): Promise<{task: TaskWithUser, attachment: {filename: string, content_base64: string}}> => {
+    const response = await fetch(`${API_BASE}/tasks/${id}/with-attachment`);
+    if (!response.ok) throw new Error("Failed to fetch task with attachment");
+    return response.json();
+  },
 };
 
 // Users API

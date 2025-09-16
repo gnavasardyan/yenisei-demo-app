@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -40,8 +40,27 @@ export default function TaskDetailsModal({
   onEditTask 
 }: TaskDetailsModalProps) {
   const [uploading, setUploading] = useState(false);
+  const [selectedAttachment, setSelectedAttachment] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Проверяем, есть ли вложения у задачи
+  const hasAttachments = (() => {
+    if (!task || !task.attachments) return false;
+    try {
+      const parsed = JSON.parse(task.attachments);
+      return parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0;
+    } catch (e) {
+      return false;
+    }
+  })();
+
+  // Загружаем задачу с вложением, если есть вложения
+  const { data: taskWithAttachment, isLoading: loadingAttachment } = useQuery({
+    queryKey: ["/api/tasks/with-attachment", task?.id],
+    queryFn: () => task ? tasksApi.getWithAttachment(task.id) : null,
+    enabled: !!task && hasAttachments,
+  });
 
   const deleteTaskMutation = useMutation({
     mutationFn: tasksApi.delete,
@@ -276,8 +295,14 @@ export default function TaskDetailsModal({
                           {attachment.size ? `${Math.round(attachment.size / 1024)} KB` : "Размер неизвестен"}
                         </p>
                       </div>
-                      <Button variant="ghost" size="sm" data-testid={`download-attachment-${index}`}>
-                        Скачать
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        data-testid={`view-attachment-${index}`}
+                        onClick={() => setSelectedAttachment(attachment.name)}
+                        disabled={loadingAttachment}
+                      >
+                        {loadingAttachment && selectedAttachment === attachment.name ? "Загрузка..." : "Просмотр"}
                       </Button>
                     </div>
                   ))}
@@ -295,6 +320,75 @@ export default function TaskDetailsModal({
               )}
             </CardContent>
           </Card>
+
+          {/* Отображение содержимого вложения */}
+          {taskWithAttachment && taskWithAttachment.attachment && selectedAttachment && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center justify-between">
+                  <span>Просмотр вложения: {taskWithAttachment.attachment.filename}</span>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setSelectedAttachment(null)}
+                    data-testid="close-attachment-view"
+                  >
+                    Закрыть
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {taskWithAttachment.attachment.content_base64 && (
+                  <div className="flex flex-col items-center space-y-4">
+                    {/* Отображаем изображение, если это изображение */}
+                    {taskWithAttachment.task.attachments && 
+                     JSON.parse(taskWithAttachment.task.attachments)[taskWithAttachment.attachment.filename]?.content_type?.startsWith('image/') && (
+                      <img 
+                        src={`data:${JSON.parse(taskWithAttachment.task.attachments)[taskWithAttachment.attachment.filename].content_type};base64,${taskWithAttachment.attachment.content_base64}`}
+                        alt={taskWithAttachment.attachment.filename}
+                        className="max-w-full max-h-96 object-contain rounded-lg border"
+                        data-testid="attachment-image"
+                      />
+                    )}
+                    
+                    {/* Информация о файле */}
+                    <div className="text-sm text-muted-foreground text-center">
+                      <p>Размер: {JSON.parse(taskWithAttachment.task.attachments)[taskWithAttachment.attachment.filename]?.length ? 
+                        Math.round(JSON.parse(taskWithAttachment.task.attachments)[taskWithAttachment.attachment.filename].length / 1024) + ' KB' : 
+                        'Неизвестен'}
+                      </p>
+                      <p>Тип: {JSON.parse(taskWithAttachment.task.attachments)[taskWithAttachment.attachment.filename]?.content_type || 'Неизвестен'}</p>
+                    </div>
+                    
+                    {/* Кнопка скачивания */}
+                    <Button 
+                      variant="outline"
+                      onClick={() => {
+                        const content = taskWithAttachment.attachment.content_base64;
+                        const contentType = JSON.parse(taskWithAttachment.task.attachments)[taskWithAttachment.attachment.filename]?.content_type || 'application/octet-stream';
+                        const byteCharacters = atob(content);
+                        const byteNumbers = new Array(byteCharacters.length);
+                        for (let i = 0; i < byteCharacters.length; i++) {
+                          byteNumbers[i] = byteCharacters.charCodeAt(i);
+                        }
+                        const byteArray = new Uint8Array(byteNumbers);
+                        const blob = new Blob([byteArray], { type: contentType });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = taskWithAttachment.attachment.filename;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      }}
+                      data-testid="download-attachment-content"
+                    >
+                      Скачать файл
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
       </DialogContent>
     </Dialog>
