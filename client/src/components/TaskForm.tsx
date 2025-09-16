@@ -142,6 +142,13 @@ export default function TaskForm({ open, onOpenChange, task, users }: TaskFormPr
     }
   };
 
+  const handleLocalFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files) {
+      handleFileUpload(Array.from(files));
+    }
+  };
+
   const isLoading = createTaskMutation.isPending || updateTaskMutation.isPending;
 
   return (
@@ -243,34 +250,36 @@ export default function TaskForm({ open, onOpenChange, task, users }: TaskFormPr
               />
             </div>
 
-            {/* Временно отключено - загрузка файлов в разработке
             {task && (
               <div>
                 <FormLabel>Вложения</FormLabel>
                 <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
                   <CloudUpload className="mx-auto h-12 w-12 text-muted-foreground mb-2" />
                   <p className="text-muted-foreground mb-2">Перетащите файлы сюда или</p>
-                  <ObjectUploader
-                    maxNumberOfFiles={5}
-                    maxFileSize={10485760}
-                    onGetUploadParameters={async () => ({
-                      method: "PUT" as const,
-                      url: `https://qdr.equiron.com/tasks/${task.id}/attachment`,
-                    })}
-                    onComplete={(result: any) => {
-                      if (result.successful.length > 0) {
-                        const files = result.successful.map((upload: any) => upload.data as File);
-                        handleFileUpload(files);
-                      }
-                    }}
-                    buttonClassName="text-primary hover:underline"
+                  <input
+                    type="file"
+                    multiple
+                    accept="*/*"
+                    onChange={handleLocalFileUpload}
+                    className="hidden"
+                    id="file-upload"
+                    data-testid="file-upload-input"
+                  />
+                  <label
+                    htmlFor="file-upload"
+                    className="text-primary hover:underline cursor-pointer inline-block"
+                    data-testid="file-upload-button"
                   >
                     выберите файлы
-                  </ObjectUploader>
+                  </label>
+                  {uploading && (
+                    <div className="mt-2 text-sm text-muted-foreground">
+                      Загрузка файлов...
+                    </div>
+                  )}
                 </div>
               </div>
             )}
-            */}
 
             <DialogFooter className="flex justify-end space-x-3">
               <Button

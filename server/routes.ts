@@ -25,11 +25,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       headers['Content-Type'] = 'application/json';
     }
     
-    // Prepare body: only JSON.stringify if content-type is application/json
-    let body: string | undefined;
+    // Prepare body: handle different content types
+    let body: any;
     if (req.method !== 'GET' && req.method !== 'HEAD' && req.body) {
-      const isJson = req.headers['content-type']?.includes('application/json');
-      body = isJson ? JSON.stringify(req.body) : req.body;
+      const contentType = req.headers['content-type'];
+      if (contentType?.includes('application/json')) {
+        body = JSON.stringify(req.body);
+      } else if (contentType?.includes('multipart/form-data')) {
+        // For multipart, we need to stream the raw body
+        // This will be handled differently - the body is already parsed by multer
+        body = req.body;
+      } else {
+        body = req.body;
+      }
     }
     
     fetch(targetUrl, {
