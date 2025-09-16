@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -43,10 +44,25 @@ export default function UserForm({ open, onOpenChange, user }: UserFormProps) {
   const form = useForm<UserFormData>({
     resolver: zodResolver(userSchema),
     defaultValues: {
-      username: user?.username || "",
-      email: user?.email || "",
+      username: "",
+      email: "",
     },
   });
+
+  // Обновляем форму когда user меняется
+  useEffect(() => {
+    if (user) {
+      form.reset({
+        username: user.username || "",
+        email: user.email || "",
+      });
+    } else {
+      form.reset({
+        username: "",
+        email: "",
+      });
+    }
+  }, [user, form]);
 
   const createUserMutation = useMutation({
     mutationFn: usersApi.create,
