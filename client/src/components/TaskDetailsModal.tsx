@@ -173,9 +173,9 @@ export default function TaskDetailsModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" data-testid="task-details-modal">
-        <DialogHeader className="flex flex-row items-center justify-between">
+        <DialogHeader>
           <DialogTitle className="text-2xl font-bold">{task.name}</DialogTitle>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 mt-4">
             {onEditTask && (
               <Button
                 variant="outline"
@@ -190,16 +190,6 @@ export default function TaskDetailsModal({
                 Редактировать
               </Button>
             )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDeleteTask}
-              disabled={deleteTaskMutation.isPending}
-              data-testid="delete-task-details"
-            >
-              <Trash2 className="h-4 w-4 mr-1 text-destructive" />
-              Удалить
-            </Button>
           </div>
         </DialogHeader>
 
@@ -326,15 +316,9 @@ export default function TaskDetailsModal({
                           {attachment.size ? `${Math.round(attachment.size / 1024)} KB` : "Размер неизвестен"}
                         </p>
                       </div>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        data-testid={`view-attachment-${index}`}
-                        onClick={() => setSelectedAttachment(attachment.name)}
-                        disabled={loadingAttachment}
-                      >
-                        {loadingAttachment && selectedAttachment === attachment.name ? "Загрузка..." : "Просмотр"}
-                      </Button>
+                      <span className="text-xs text-muted-foreground">
+                        Приложение
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -430,6 +414,85 @@ export default function TaskDetailsModal({
               </CardContent>
             </Card>
           )}
+
+          {/* Автоматическое отображение содержимого вложения (если есть только одно) */}
+          {taskWithAttachment && taskWithAttachment.attachment && attachments.length === 1 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Содержимое вложения: {taskWithAttachment.attachment.filename}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {taskWithAttachment.attachment.content_base64 && (
+                  <div className="flex flex-col items-center space-y-4">
+                    {(() => {
+                      const parsedAttachments = parseAttachments(taskWithAttachment.task.attachments);
+                      const attachment = parsedAttachments[taskWithAttachment.attachment.filename];
+                      return attachment?.content_type?.startsWith('image/') && (
+                        <img 
+                          src={`data:${attachment.content_type};base64,${taskWithAttachment.attachment.content_base64}`}
+                          alt={taskWithAttachment.attachment.filename}
+                          className="max-w-full max-h-96 object-contain rounded-lg border"
+                          data-testid="attachment-image-auto"
+                        />
+                      );
+                    })()}
+                    
+                    {(() => {
+                      const parsedAttachments = parseAttachments(taskWithAttachment.task.attachments);
+                      const attachment = parsedAttachments[taskWithAttachment.attachment.filename];
+                      return (
+                        <div className="text-sm text-muted-foreground text-center">
+                          <p>Размер: {attachment?.length ? 
+                            Math.round(attachment.length / 1024) + ' KB' : 
+                            'Неизвестен'}
+                          </p>
+                          <p>Тип: {attachment?.content_type || 'Неизвестен'}</p>
+                        </div>
+                      );
+                    })()}
+                    
+                    <Button 
+                      variant="outline"
+                      onClick={() => {
+                        const content = taskWithAttachment.attachment.content_base64;
+                        const parsedAttachments = parseAttachments(taskWithAttachment.task.attachments);
+                        const contentType = parsedAttachments[taskWithAttachment.attachment.filename]?.content_type || 'application/octet-stream';
+                        const byteCharacters = atob(content);
+                        const byteNumbers = new Array(byteCharacters.length);
+                        for (let i = 0; i < byteCharacters.length; i++) {
+                          byteNumbers[i] = byteCharacters.charCodeAt(i);
+                        }
+                        const byteArray = new Uint8Array(byteNumbers);
+                        const blob = new Blob([byteArray], { type: contentType });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = taskWithAttachment.attachment.filename;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      }}
+                      data-testid="download-attachment-auto"
+                    >
+                      Скачать файл
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Кнопка удаления внизу */}
+          <div className="flex justify-end pt-4">
+            <Button
+              variant="destructive"
+              onClick={handleDeleteTask}
+              disabled={deleteTaskMutation.isPending}
+              data-testid="delete-task-bottom"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              {deleteTaskMutation.isPending ? 'Удаление...' : 'Удалить задачу'}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

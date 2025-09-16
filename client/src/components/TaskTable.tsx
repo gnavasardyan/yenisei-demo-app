@@ -149,12 +149,22 @@ export default function TaskTable({ tasks, users, onEditTask, onAssignTask, onVi
                             {task.description}
                           </div>
                         )}
-                        {task.attachments && (
-                          <div className="flex items-center space-x-2 mt-2">
-                            <Paperclip className="text-muted-foreground h-3 w-3" />
-                            <span className="text-xs text-muted-foreground">Есть вложения</span>
-                          </div>
-                        )}
+                        {(() => {
+                          // Проверяем, есть ли фактически вложения
+                          if (!task.attachments) return null;
+                          try {
+                            const parsed = typeof task.attachments === 'string' ? JSON.parse(task.attachments) : task.attachments;
+                            const hasFiles = parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0;
+                            return hasFiles && (
+                              <div className="flex items-center space-x-2 mt-2">
+                                <Paperclip className="text-muted-foreground h-3 w-3" />
+                                <span className="text-xs text-muted-foreground">Есть вложения</span>
+                              </div>
+                            );
+                          } catch (e) {
+                            return null;
+                          }
+                        })()}
                       </div>
                     </td>
                     <td className="p-4">
