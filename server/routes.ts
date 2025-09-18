@@ -3,10 +3,53 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Proxy all API requests to the external backend
+  // Special handling for auth endpoints
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      console.log('Auth login request:', req.body);
+      
+      // Convert to form data
+      const formData = new URLSearchParams({
+        grant_type: 'password',
+        username: req.body.username || '',
+        password: req.body.password || '',
+        scope: '',
+        client_id: 'string',
+        client_secret: ''
+      });
+
+      console.log('Sending to auth API:', formData.toString());
+
+      const response = await fetch('https://qdr.equiron.com/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: formData,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        res.json(data);
+      } else {
+        const errorText = await response.text();
+        console.log('Auth API error:', response.status, errorText);
+        res.status(response.status).json({ error: 'Authentication failed' });
+      }
+    } catch (error) {
+      console.error('Auth proxy error:', error);
+      res.status(500).json({ error: 'Authentication service error' });
+    }
+  });
+
+  // Proxy all other API requests to the external backend
   app.use("/api", (req, res) => {
     // Build target URL with query parameters
     const targetUrl = `https://qdr.equiron.com${req.originalUrl.replace(/^\/api/, '')}`;
+    
+    // Debug logging
+    console.log('Proxy request:', req.method, req.originalUrl, 'Content-Type:', req.headers['content-type']);
     
     // Forward the request to the external API
     const headers: Record<string, string> = {};
@@ -25,33 +68,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
       headers['Content-Type'] = 'application/json';
     }
     
-    // Handle multipart uploads specially
-    if (req.method !== 'GET' && req.method !== 'HEAD' && req.headers['content-type']?.includes('multipart/form-data')) {
-      console.log('Proxying multipart request to:', targetUrl);
+    // Handle multipart uploads and form-encoded data specially
+    if (req.method !== 'GET' && req.method !== 'HEAD' && 
+        (req.headers['content-type']?.includes('multipart/form-data') || 
+         req.headers['content-type']?.includes('application/x-www-form-urlencoded'))) {
       
-      // For multipart, we need to collect raw body and forward it
-      const chunks: Buffer[] = [];
-      req.on('data', chunk => chunks.push(chunk));
-      req.on('end', () => {
-        const buffer = Buffer.concat(chunks);
-        
-        fetch(targetUrl, {
-          method: req.method,
-          headers,
-          body: buffer,
-        })
-        .then(response => {
-          res.status(response.status);
-          if (response.headers.get('content-type')?.includes('application/json')) {
-            return response.json().then(data => res.json(data));
-          } else {
-            return response.text().then(text => res.send(text));
+      console.log('Proxying special request to:', targetUrl, 'Content-Type:', req.headers['content-type']);
+      console.log('Request body type:', typeof req.body, 'body:', req.body);
+      
+      // Use existing parsed body for form-encoded data
+      let body: string;
+      try {
+        if (req.body && typeof req.body === 'object') {
+          console.log('Processing object body');
+          const params = new URLSearchParams();
+          for (const [key, value] of Object.entries(req.body)) {
+            params.append(key, String(value));
           }
-        })
-        .catch(error => {
-          console.error('Multipart proxy error:', error);
-          res.status(500).json({ error: 'Multipart upload failed' });
-        });
+          body = params.toString();
+        } else {
+          console.log('Processing string body');
+          body = String(req.body || '');
+        }
+        
+        console.log('Sending form body:', body);
+      } catch (error) {
+        console.log('Body processing error:', error);
+        body = '';
+      }
+      
+      fetch(targetUrl, {
+        method: req.method,
+        headers,
+        body,
+      })
+      .then(response => {
+        res.status(response.status);
+        if (response.headers.get('content-type')?.includes('application/json')) {
+          return response.json().then(data => res.json(data));
+        } else {
+          return response.text().then(text => res.send(text));
+        }
+      })
+      .catch(error => {
+        console.error('Special proxy error:', error);
+        res.status(500).json({ error: 'Special request failed' });
       });
       return; // Don't continue with regular fetch
     }
@@ -62,6 +123,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const contentType = req.headers['content-type'];
       if (contentType?.includes('application/json')) {
         body = JSON.stringify(req.body);
+      } else if (contentType?.includes('application/x-www-form-urlencoded')) {
+        // Convert object to URL-encoded string
+        const params = new URLSearchParams();
+        for (const [key, value] of Object.entries(req.body)) {
+          params.append(key, String(value));
+        }
+        body = params.toString();
       } else {
         body = req.body;
       }

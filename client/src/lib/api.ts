@@ -127,12 +127,23 @@ export const dashboardApi = {
 // Authentication API
 export const authApi = {
   login: async (credentials: LoginRequest): Promise<LoginResponse> => {
+    // OAuth2 password grant format
+    const formData = new URLSearchParams({
+      grant_type: 'password',
+      username: credentials.username,
+      password: credentials.password,
+      scope: '',
+      client_id: 'string',
+      client_secret: ''
+    });
+
     const response = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json',
       },
-      body: JSON.stringify(credentials),
+      body: formData,
     });
 
     if (!response.ok) {
