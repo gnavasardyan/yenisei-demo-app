@@ -62,8 +62,10 @@ export default function TaskTable({ tasks, users, onEditTask, onAssignTask, onVi
     if (!matchesUser && userFilter !== "all") {
       // Ищем пользователя в списке для получения его ID и username
       const selectedUser = users.find(u => u.id === userFilter);
-      matchesUser = task.user_id === userFilter || 
-                   (selectedUser && task.user_id === selectedUser.username);
+      matchesUser = Boolean(
+        task.user_id === userFilter || 
+        (selectedUser && task.user_id === selectedUser.username)
+      );
     }
     
     return matchesSearch && matchesStatus && matchesUser;

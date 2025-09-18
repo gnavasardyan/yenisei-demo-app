@@ -80,17 +80,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `${currentDescription}\n\nДобавлено:\n${additionalText}` : 
         additionalText;
       
-      // Update the task with new description
+      // Update the task with new description while preserving all fields
+      const updateData = {
+        ...task,
+        description: newDescription,
+        // Explicitly preserve important fields
+        status: task.status,
+        user_id: task.user_id,
+        name: task.name
+      };
+      
+      console.log('Updating task with data:', JSON.stringify(updateData, null, 2));
+      
       const updateResponse = await fetch(`https://qdr.equiron.com/tasks/${taskId}`, {
         method: 'PUT',
         headers: {
           ...headers,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          ...task,
-          description: newDescription
-        }),
+        body: JSON.stringify(updateData),
       });
 
       if (updateResponse.ok) {
