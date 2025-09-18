@@ -71,9 +71,22 @@ export default function TaskForm({ open, onOpenChange, task, users }: TaskFormPr
     if (currentUser.role === 'admin') return true;
     if (!task) return true; // новая задача
     
-    // Обычный пользователь может редактировать статус только своих задач
-    return task.user_id === currentUser.id || task.user_id === currentUser.username;
-  }, [currentUser, task]);
+    // Ищем совпадение пользователя как на главной странице  
+    const userMatch = users.find(u => 
+      u.username === currentUser.username || 
+      u.id === currentUser.id
+    );
+    
+    const canEdit = (
+      task.user_id === currentUser.id || 
+      task.user_id === currentUser.username ||
+      (userMatch && task.user_id === userMatch.id)
+    );
+    
+    // Удаляем отладку после исправления
+    
+    return canEdit;
+  }, [currentUser, task, users]);
 
   const form = useForm<TaskFormData>({
     resolver: zodResolver(taskSchema),

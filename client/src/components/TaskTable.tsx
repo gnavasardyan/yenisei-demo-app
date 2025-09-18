@@ -203,10 +203,17 @@ export default function TaskTable({ tasks, users, onEditTask, onAssignTask, onVi
                     <td className="p-4">
                       <div className="flex items-center space-x-2">
                         {(() => {
+                          // Используем ту же логику сопоставления что и в TaskForm
+                          const userMatch = users.find(u => 
+                            u.username === currentUser?.username || 
+                            u.id === currentUser?.id
+                          );
+                          
                           const canEdit = !currentUser || 
                                         currentUser.role === 'admin' || 
                                         task.user_id === currentUser.id ||
-                                        task.user_id === currentUser.username;
+                                        task.user_id === currentUser.username ||
+                                        (userMatch && task.user_id === userMatch.id);
                           
                           if (canEdit) {
                             return (

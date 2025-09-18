@@ -49,19 +49,40 @@ export default function Dashboard() {
   const filteredTasks = useMemo(() => {
     if (!currentUser) return [];
     
+    // Удаляем отладку после исправления
+    
     // Администраторы видят все задачи
     if (currentUser.role === 'admin') {
       return tasks;
     }
     
     // Обычные пользователи видят только свои назначенные задачи
-    // Сравниваем и по ID и по username для совместимости
+    // Ищем совпадение по ID, username или по данным пользователя из массива users
+    const userMatch = users.find(u => 
+      u.username === currentUser.username || 
+      u.id === currentUser.id
+    );
+    
+    // Удаляем отладку после исправления
+    
     const filtered = tasks.filter(task => {
-      return task.user_id && (
-        String(task.user_id) === String(currentUser.id) ||
-        String(task.user_id) === String(currentUser.username)
-      );
+      if (!task.user_id) return false;
+      
+      // Проверяем прямое совпадение ID и username
+      if (String(task.user_id) === String(currentUser.id) || 
+          String(task.user_id) === String(currentUser.username)) {
+        return true;
+      }
+      
+      // Проверяем совпадение с найденным пользователем из базы
+      if (userMatch && String(task.user_id) === String(userMatch.id)) {
+        return true;
+      }
+      
+      return false;
     });
+    
+    // Удаляем отладку после исправления
     
     return filtered;
   }, [tasks, currentUser]);
