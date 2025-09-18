@@ -6,7 +6,10 @@ import type {
   CreateTaskRequest, 
   CreateUserRequest, 
   AssignTaskRequest,
-  DashboardStats
+  DashboardStats,
+  LoginRequest,
+  LoginResponse,
+  RegisterRequest
 } from "./types";
 
 const API_BASE = "/api";
@@ -118,5 +121,40 @@ export const dashboardApi = {
       completedTasks: tasks.filter(t => t.status === "done").length,
       inProgressTasks: tasks.filter(t => t.status === "assigned").length,
     };
+  },
+};
+
+// Authentication API
+export const authApi = {
+  login: async (credentials: LoginRequest): Promise<LoginResponse> => {
+    const response = await fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(credentials),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || 'Ошибка входа в систему');
+    }
+
+    return response.json();
+  },
+
+  register: async (data: RegisterRequest): Promise<void> => {
+    const response = await fetch(`${API_BASE}/auth/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || 'Ошибка регистрации');
+    }
   },
 };
