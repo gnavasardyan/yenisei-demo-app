@@ -55,9 +55,12 @@ export default function Dashboard() {
     }
     
     // Обычные пользователи видят только свои назначенные задачи
-    // Важно: сравниваем как строки и проверяем что user_id не пустой
+    // Сравниваем и по ID и по username для совместимости
     const filtered = tasks.filter(task => {
-      return task.user_id && String(task.user_id) === String(currentUser.id);
+      return task.user_id && (
+        String(task.user_id) === String(currentUser.id) ||
+        String(task.user_id) === String(currentUser.username)
+      );
     });
     
     return filtered;
@@ -93,7 +96,10 @@ export default function Dashboard() {
     if (!currentUser || currentUser.role !== 'admin') return [];
     
     return users.map(user => {
-      const userTasks = tasks.filter(task => task.user_id && String(task.user_id) === String(user.id));
+      const userTasks = tasks.filter(task => task.user_id && (
+        String(task.user_id) === String(user.id) ||
+        String(task.user_id) === String(user.username)
+      ));
       return {
         ...user,
         taskStats: {
@@ -200,12 +206,7 @@ export default function Dashboard() {
               </div>
             ) : recentTasks.length === 0 ? (
               <div className="p-8 text-center text-muted-foreground">
-                <div className="mb-2">Нет назначенных задач</div>
-                {currentUser?.role !== 'admin' && (
-                  <div className="text-xs">
-                    Задачи появятся здесь, когда администратор назначит их на вас
-                  </div>
-                )}
+                Нет задач для отображения
               </div>
             ) : (
               recentTasks.map((task) => (

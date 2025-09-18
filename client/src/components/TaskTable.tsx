@@ -205,7 +205,8 @@ export default function TaskTable({ tasks, users, onEditTask, onAssignTask, onVi
                         {(() => {
                           const canEdit = !currentUser || 
                                         currentUser.role === 'admin' || 
-                                        task.user_id === currentUser.id;
+                                        task.user_id === currentUser.id ||
+                                        task.user_id === currentUser.username;
                           
                           if (canEdit) {
                             return (

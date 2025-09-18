@@ -62,8 +62,18 @@ export default function TaskForm({ open, onOpenChange, task, users }: TaskFormPr
     }
     
     // Обычные пользователи могут назначать только на себя
-    return users.filter(user => user.id === currentUser.id);
+    return users.filter(user => user.id === currentUser.id || user.username === currentUser.username);
   }, [users, currentUser]);
+
+  // Проверяем может ли пользователь редактировать статус задачи
+  const canEditStatus = useMemo(() => {
+    if (!currentUser) return false;
+    if (currentUser.role === 'admin') return true;
+    if (!task) return true; // новая задача
+    
+    // Обычный пользователь может редактировать статус только своих задач
+    return task.user_id === currentUser.id || task.user_id === currentUser.username;
+  }, [currentUser, task]);
 
   const form = useForm<TaskFormData>({
     resolver: zodResolver(taskSchema),
@@ -285,40 +295,33 @@ export default function TaskForm({ open, onOpenChange, task, users }: TaskFormPr
               <FormField
                 control={form.control}
                 name="status"
-                render={({ field }) => {
-                  // Проверяем может ли пользователь редактировать статус
-                  const canEditStatus = !task || !currentUser || 
-                                      currentUser.role === 'admin' || 
-                                      task.user_id === currentUser.id;
-                  
-                  return (
-                    <FormItem>
-                      <FormLabel>Статус</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
-                        value={field.value}
-                        disabled={!canEditStatus}
-                      >
-                        <FormControl>
-                          <SelectTrigger data-testid="task-status-select">
-                            <SelectValue placeholder="Выберите статус" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="created">Создана</SelectItem>
-                          <SelectItem value="assigned">Назначена</SelectItem>
-                          <SelectItem value="done">Выполнена</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {!canEditStatus && (
-                        <p className="text-xs text-muted-foreground">
-                          Только автор задачи может изменять её статус
-                        </p>
-                      )}
-                      <FormMessage />
-                    </FormItem>
-                  );
-                }}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Статус</FormLabel>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      value={field.value}
+                      disabled={!canEditStatus}
+                    >
+                      <FormControl>
+                        <SelectTrigger data-testid="task-status-select">
+                          <SelectValue placeholder="Выберите статус" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="created">Создана</SelectItem>
+                        <SelectItem value="assigned">Назначена</SelectItem>
+                        <SelectItem value="done">Выполнена</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {!canEditStatus && (
+                      <p className="text-xs text-muted-foreground">
+                        Только назначенный исполнитель может изменять статус задачи
+                      </p>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
 
               <FormField
