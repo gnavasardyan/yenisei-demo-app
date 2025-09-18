@@ -85,7 +85,7 @@ export default function Dashboard() {
     // Удаляем отладку после исправления
     
     return filtered;
-  }, [tasks, currentUser]);
+  }, [tasks, currentUser, users]);
 
   // Локальная статистика на основе отфильтрованных задач
   const localStats = useMemo(() => {
@@ -138,7 +138,9 @@ export default function Dashboard() {
   };
 
   const handleUserClick = (user: UserWithStats) => {
-    const userTasksList = tasks.filter(task => task.user_id === user.id);
+    const userTasksList = tasks.filter(task => 
+      task.user_id === user.id || task.user_id === user.username
+    );
     setUserTasks(userTasksList);
     setSelectedUser(user);
     setUserTasksOpen(true);

@@ -56,7 +56,15 @@ export default function TaskTable({ tasks, users, onEditTask, onAssignTask, onVi
     const matchesSearch = task.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          task.description?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === "all" || task.status === statusFilter;
-    const matchesUser = userFilter === "all" || task.user_id === userFilter;
+    
+    // Улучшенная логика сопоставления пользователей
+    let matchesUser = userFilter === "all";
+    if (!matchesUser && userFilter !== "all") {
+      // Ищем пользователя в списке для получения его ID и username
+      const selectedUser = users.find(u => u.id === userFilter);
+      matchesUser = task.user_id === userFilter || 
+                   (selectedUser && task.user_id === selectedUser.username);
+    }
     
     return matchesSearch && matchesStatus && matchesUser;
   });

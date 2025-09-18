@@ -83,7 +83,6 @@ export default function TaskForm({ open, onOpenChange, task, users }: TaskFormPr
       (userMatch && task.user_id === userMatch.id)
     );
     
-    // Удаляем отладку после исправления
     
     return canEdit;
   }, [currentUser, task, users]);
