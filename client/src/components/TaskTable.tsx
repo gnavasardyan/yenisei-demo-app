@@ -53,8 +53,8 @@ export default function TaskTable({ tasks, users, onEditTask, onAssignTask, onVi
   });
 
   const filteredTasks = tasks.filter((task) => {
-    const matchesSearch = task.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         task.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = (task.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         (task.description || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === "all" || task.status === statusFilter;
     
     // Улучшенная логика сопоставления пользователей
