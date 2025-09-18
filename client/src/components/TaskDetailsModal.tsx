@@ -51,36 +51,18 @@ export default function TaskDetailsModal({
   const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
 
-  // Проверяем, есть ли вложения у задачи
-  const hasAttachments = (() => {
-    if (!task || !task.attachments) {
-      console.log('No task or attachments:', { task: !!task, attachments: task?.attachments });
-      return false;
-    }
-    try {
-      const parsed = typeof task.attachments === 'string' ? JSON.parse(task.attachments) : task.attachments;
-      const hasFiles = parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0;
-      console.log('Checking attachments:', { 
-        taskId: task.id, 
-        attachments: task.attachments, 
-        parsed, 
-        hasFiles 
-      });
-      return hasFiles;
-    } catch (e) {
-      console.warn('Failed to parse attachments for hasAttachments:', e, task.attachments);
-      return false;
-    }
-  })();
+  // Всегда пытаемся получить вложения для задач (не полагаемся на поле attachments)
+  const hasAttachments = !!task; // Всегда пытаемся загрузить файлы для существующих задач
 
-  // Загружаем задачу с вложением, если есть вложения
-  const { data: taskWithAttachment, isLoading: loadingAttachment } = useQuery({
+  // Загружаем задачу с вложением для всех задач
+  const { data: taskWithAttachment, isLoading: loadingAttachment, error: attachmentError } = useQuery({
     queryKey: ["/api/tasks/with-attachment", task?.id],
     queryFn: () => {
-      console.log('Fetching task with attachment:', { taskId: task?.id, hasAttachments });
+      console.log('Fetching task with attachment:', { taskId: task?.id });
       return task ? tasksApi.getWithAttachment(task.id) : null;
     },
-    enabled: !!task && hasAttachments && open,
+    enabled: !!task && open,
+    retry: false, // Не повторяем запрос если файлов нет
   });
 
   // Загружаем данные пользователя, если у задачи есть user_id
@@ -118,7 +100,18 @@ export default function TaskDetailsModal({
     mutationFn: ({ taskId, file }: { taskId: string; file: File }) =>
       tasksApi.uploadAttachment(taskId, file),
     onSuccess: () => {
+      // Обновляем кэш задач
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/"] });
+      // Также принудительно обновляем кэш с файлами
+      if (task) {
+        queryClient.invalidateQueries({ queryKey: ["/api/tasks/with-attachment", task.id] });
+        // Принудительно обновляем данные задачи через некоторое время
+        // поскольку внешний API может обновлять attachments с задержкой
+        setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: ["/api/tasks/"] });
+          queryClient.refetchQueries({ queryKey: ["/api/tasks/"] });
+        }, 2000);
+      }
       toast({
         title: "Успех",
         description: "Файл успешно загружен",

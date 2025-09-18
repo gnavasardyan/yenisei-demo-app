@@ -151,6 +151,10 @@ export default function TaskForm({ open, onOpenChange, task, users }: TaskFormPr
       }
       
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/"] });
+      // Также принудительно обновляем кэш с файлами
+      if (taskId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/tasks/with-attachment", taskId] });
+      }
       toast({
         title: "Успех",
         description: "Задача успешно создана",
