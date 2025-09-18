@@ -77,7 +77,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Append the new text to existing description
       const currentDescription = task.description || '';
       const newDescription = currentDescription ? 
-        `${currentDescription}\n\n---\n${additionalText}` : 
+        `${currentDescription}\n\nДобавлено:\n${additionalText}` : 
         additionalText;
       
       // Update the task with new description
