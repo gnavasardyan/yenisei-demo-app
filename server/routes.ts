@@ -51,12 +51,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log('Adding text to task description:', taskId, additionalText);
       
+      // Prepare headers with authorization
+      const headers: Record<string, string> = {
+        'Accept': 'application/json',
+      };
+      
+      // Forward authorization header if present
+      if (req.headers.authorization) {
+        headers['authorization'] = req.headers.authorization;
+      }
+      
       // First get the current task
       const getResponse = await fetch(`https://qdr.equiron.com/tasks/${taskId}`, {
         method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-        },
+        headers,
       });
 
       if (!getResponse.ok) {
@@ -76,8 +84,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updateResponse = await fetch(`https://qdr.equiron.com/tasks/${taskId}`, {
         method: 'PUT',
         headers: {
+          ...headers,
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
         },
         body: JSON.stringify({
           ...task,
