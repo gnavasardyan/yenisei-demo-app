@@ -1,7 +1,12 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 import { 
   Home, 
   ClipboardList, 
@@ -9,6 +14,9 @@ import {
   Menu, 
   Bell, 
   User as UserIcon,
+  LogOut,
+  Settings,
+  Shield,
   X
 } from "lucide-react";
 
@@ -18,12 +26,16 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
+  const { user, logout } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
+  // Роль-ориентированная навигация
   const navigation = [
     { name: "Главная", href: "/", icon: Home },
     { name: "Задачи", href: "/tasks", icon: ClipboardList },
-    { name: "Пользователи", href: "/users", icon: Users },
+    ...(user?.role === 'admin' ? [{ name: "Пользователи", href: "/users", icon: Users }] : []),
   ];
 
   const pageConfig: Record<string, { title: string; subtitle: string }> = {
@@ -33,6 +45,23 @@ export default function Layout({ children }: LayoutProps) {
   };
 
   const currentPage = pageConfig[location] || { title: "Страница не найдена", subtitle: "" };
+
+  const handleLogout = () => {
+    // Очищаем кэш React Query
+    queryClient.clear();
+    
+    // Выходим из системы
+    logout();
+    
+    // Показываем уведомление
+    toast({
+      title: "Успех",
+      description: "Вы успешно вышли из системы",
+    });
+    
+    // Перенаправляем на страницу входа
+    setLocation("/login");
+  };
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -121,9 +150,62 @@ export default function Layout({ children }: LayoutProps) {
               <Button variant="ghost" size="sm" data-testid="notifications-button">
                 <Bell className="h-5 w-5" />
               </Button>
-              <Button variant="ghost" size="sm" data-testid="profile-button">
-                <UserIcon className="h-5 w-5" />
-              </Button>
+              
+              {user ? (
+                /* User dropdown для авторизованного пользователя */
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="flex items-center space-x-2" data-testid="user-menu-button">
+                      <Avatar className="w-6 h-6">
+                        <AvatarFallback className="text-xs">
+                          {user.username.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="hidden md:inline text-sm">{user.username}</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel className="font-normal">
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium leading-none">{user.username}</p>
+                        <p className="text-xs leading-none text-muted-foreground">
+                          {user.email}
+                        </p>
+                        <p className="text-xs leading-none text-muted-foreground capitalize">
+                          {user.role === 'admin' ? 'Администратор' : 'Пользователь'}
+                        </p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    
+                    <DropdownMenuItem disabled className="cursor-not-allowed">
+                      <Settings className="mr-2 h-4 w-4" />
+                      <span>Настройки</span>
+                    </DropdownMenuItem>
+                    
+                    {user.role === 'admin' && (
+                      <DropdownMenuItem disabled className="cursor-not-allowed">
+                        <Shield className="mr-2 h-4 w-4" />
+                        <span>Админ панель</span>
+                      </DropdownMenuItem>
+                    )}
+                    
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout} data-testid="logout-button">
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Выйти</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                /* Кнопка входа для неавторизованного пользователя */
+                <Link href="/login">
+                  <Button variant="outline" size="sm" data-testid="link-login">
+                    <UserIcon className="mr-2 h-4 w-4" />
+                    Войти
+                  </Button>
+                </Link>
+              )}
             </div>
           </div>
         </header>
