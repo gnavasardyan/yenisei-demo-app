@@ -250,8 +250,8 @@ export default function Dashboard() {
                         </p>
                       )}
                       <div className="flex items-center space-x-2 text-xs">
-                        <Badge className={statusConfig[task.status].color}>
-                          {statusConfig[task.status].label}
+                        <Badge className={(statusConfig[task.status] || { color: "bg-secondary/10 text-secondary", label: "Неизвестно" }).color}>
+                          {(statusConfig[task.status] || { color: "bg-secondary/10 text-secondary", label: "Неизвестно" }).label}
                         </Badge>
                         <span className="text-muted-foreground">
                           {task.created_at ? new Date(task.created_at).toLocaleDateString("ru-RU") : "—"}
@@ -380,8 +380,8 @@ export default function Dashboard() {
                         </p>
                       )}
                       <div className="flex items-center space-x-2">
-                        <Badge className={statusConfig[task.status].color}>
-                          {statusConfig[task.status].label}
+                        <Badge className={(statusConfig[task.status] || { color: "bg-secondary/10 text-secondary", label: "Неизвестно" }).color}>
+                          {(statusConfig[task.status] || { color: "bg-secondary/10 text-secondary", label: "Неизвестно" }).label}
                         </Badge>
                         <span className="text-xs text-muted-foreground">
                           {task.created_at ? new Date(task.created_at).toLocaleDateString("ru-RU") : "—"}
