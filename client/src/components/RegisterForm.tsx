@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { UserPlus, Loader2 } from "lucide-react";
@@ -15,9 +14,6 @@ const registerSchema = z.object({
   username: z.string().min(3, "Имя пользователя должно содержать минимум 3 символа"),
   password: z.string().min(6, "Пароль должен содержать минимум 6 символов"),
   confirmPassword: z.string(),
-  role: z.enum(["user", "admin"], {
-    required_error: "Выберите роль пользователя",
-  }),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Пароли не совпадают",
   path: ["confirmPassword"],
@@ -40,14 +36,13 @@ export default function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
       username: "",
       password: "",
       confirmPassword: "",
-      role: "user",
     },
   });
 
   const onSubmit = async (data: RegisterFormData) => {
     setIsLoading(true);
     try {
-      await register(data.username, data.password, data.role);
+      await register(data.username, data.password, "user");
       toast({
         title: "Успех",
         description: "Регистрация прошла успешно. Вы автоматически вошли в систему",
@@ -136,27 +131,6 @@ export default function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="role"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Роль пользователя</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoading}>
-                    <FormControl>
-                      <SelectTrigger data-testid="select-role">
-                        <SelectValue placeholder="Выберите роль" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="user" data-testid="role-user">Пользователь</SelectItem>
-                      <SelectItem value="admin" data-testid="role-admin">Администратор</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
             <Button
               type="submit"
