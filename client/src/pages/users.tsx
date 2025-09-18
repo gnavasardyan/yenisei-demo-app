@@ -8,7 +8,6 @@ import UserForm from "@/components/UserForm";
 import TaskTable from "@/components/TaskTable";
 import { usersApi, tasksApi } from "@/lib/api";
 import type { UserWithStats, TaskWithUser } from "@/lib/types";
-import { Plus } from "lucide-react";
 
 export default function Users() {
   const [userFormOpen, setUserFormOpen] = useState(false);
@@ -88,15 +87,8 @@ export default function Users() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-2xl font-semibold mb-2">Управление пользователями</h2>
-          <p className="text-muted-foreground">Создавайте и управляйте пользователями системы</p>
+          <p className="text-muted-foreground">Управляйте существующими пользователями системы. Новые пользователи создаются через регистрацию.</p>
         </div>
-        <Button 
-          onClick={() => setUserFormOpen(true)}
-          data-testid="add-user-button"
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Добавить пользователя
-        </Button>
       </div>
 
       {/* Users Grid */}
