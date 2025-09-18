@@ -101,7 +101,7 @@ export default function TaskForm({ open, onOpenChange, task, users }: TaskFormPr
   useEffect(() => {
     if (task) {
       form.reset({
-        name: task.name || task.title || "", // Используем title как запасной вариант
+        name: task.name || "", // Используем name из типа TaskWithUser
         description: task.description || "",
         status: task.status || "created",
         user_id: task.user_id || "unassigned",
@@ -164,10 +164,15 @@ export default function TaskForm({ open, onOpenChange, task, users }: TaskFormPr
       form.reset();
       setPendingFiles([]);
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error('Task creation error:', error);
+      const message = error?.response?.body?.includes('Could not validate credentials') 
+        ? "Ошибка аутентификации. Попробуйте войти в систему заново"
+        : "Не удалось создать задачу";
+      
       toast({
         title: "Ошибка",
-        description: "Не удалось создать задачу",
+        description: message,
         variant: "destructive",
       });
     },
@@ -214,6 +219,26 @@ export default function TaskForm({ open, onOpenChange, task, users }: TaskFormPr
   });
 
   const onSubmit = (data: TaskFormData) => {
+    // Проверяем аутентификацию перед отправкой
+    const token = localStorage.getItem('auth_token');
+    const user = localStorage.getItem('auth_user');
+    console.log('Authentication check before submit:', { 
+      hasToken: !!token,
+      tokenLength: token?.length,
+      hasUser: !!user,
+      currentUser,
+      formData: data
+    });
+    
+    if (!token || !currentUser) {
+      toast({
+        title: "Ошибка аутентификации",
+        description: "Необходимо войти в систему для создания задач",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     // Handle unassigned user_id
     const taskData = {
       ...data,
