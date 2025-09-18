@@ -26,7 +26,6 @@ import type { User } from "@/lib/types";
 
 const userSchema = z.object({
   username: z.string().min(1, "Имя пользователя обязательно"),
-  email: z.string().email("Некорректный email адрес"),
 });
 
 type UserFormData = z.infer<typeof userSchema>;
@@ -45,7 +44,6 @@ export default function UserForm({ open, onOpenChange, user }: UserFormProps) {
     resolver: zodResolver(userSchema),
     defaultValues: {
       username: "",
-      email: "",
     },
   });
 
@@ -54,12 +52,10 @@ export default function UserForm({ open, onOpenChange, user }: UserFormProps) {
     if (user) {
       form.reset({
         username: user.username || "",
-        email: user.email || "",
       });
     } else {
       form.reset({
         username: "",
-        email: "",
       });
     }
   }, [user, form]);
@@ -166,25 +162,6 @@ export default function UserForm({ open, onOpenChange, user }: UserFormProps) {
                       placeholder="Введите имя пользователя"
                       {...field}
                       data-testid="user-username-input"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email *</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="email"
-                      placeholder="Введите email адрес"
-                      {...field}
-                      data-testid="user-email-input"
                     />
                   </FormControl>
                   <FormMessage />

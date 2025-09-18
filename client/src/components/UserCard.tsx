@@ -55,9 +55,6 @@ export default function UserCard({ user, onEditUser, onViewTasks }: UserCardProp
               <h3 className="font-semibold text-lg" data-testid={`user-name-${user.id}`}>
                 {user.username}
               </h3>
-              <p className="text-sm text-muted-foreground" data-testid={`user-email-${user.id}`}>
-                {user.email}
-              </p>
             </div>
           </div>
           <div className="flex items-center space-x-1">

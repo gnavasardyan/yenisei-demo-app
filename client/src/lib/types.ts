@@ -1,7 +1,6 @@
 export interface User {
   id: string;
   username: string;
-  email: string;
   role?: 'user' | 'admin';
   created_at?: string;
 }
@@ -44,7 +43,6 @@ export interface CreateTaskRequest {
 
 export interface CreateUserRequest {
   username: string;
-  email: string;
 }
 
 export interface AssignTaskRequest {

@@ -65,7 +65,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const userInfo: User = {
         id: tokenPayload.sub || tokenPayload.id || username,
         username: tokenPayload.username || username,
-        email: tokenPayload.email || `${username}@example.com`, // Временное решение для совместимости
         role: tokenPayload.role || 'user',
       };
 

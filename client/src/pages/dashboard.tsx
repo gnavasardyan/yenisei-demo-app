@@ -251,9 +251,6 @@ export default function Dashboard() {
                         <h4 className="font-medium" data-testid={`user-name-${user.id}`}>
                           {user.username}
                         </h4>
-                        <p className="text-sm text-muted-foreground" data-testid={`user-email-${user.id}`}>
-                          {user.email}
-                        </p>
                       </div>
                     </div>
                     <div className="text-right">
