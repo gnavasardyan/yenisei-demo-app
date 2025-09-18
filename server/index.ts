@@ -14,6 +14,13 @@ app.use("/api", (req, res, next) => {
     
     console.log('Proxying multipart upload to:', targetUrl, 'Content-Type:', req.headers['content-type']);
     
+    // Log authorization header for debugging
+    if (req.headers.authorization) {
+      console.log('Multipart request has authorization header (length:', req.headers.authorization.length, ')');
+    } else {
+      console.error('CRITICAL: Multipart request missing authorization header - this will cause 401 error');
+    }
+    
     // Forward headers
     const headers: Record<string, string> = {};
     const safeHeaders = ['authorization', 'content-type', 'accept', 'user-agent'];
@@ -37,6 +44,12 @@ app.use("/api", (req, res, next) => {
       duplex: 'half' as any,
     })
     .then(response => {
+      console.log('Multipart upload response status:', response.status);
+      if (response.status >= 400) {
+        console.error('Multipart upload failed with status:', response.status);
+        response.text().then(text => console.error('Error response body:', text));
+      }
+      
       res.status(response.status);
       // Copy response headers
       response.headers.forEach((value, key) => {
@@ -46,9 +59,15 @@ app.use("/api", (req, res, next) => {
       });
       
       if (response.headers.get('content-type')?.includes('application/json')) {
-        return response.json().then(data => res.json(data));
+        return response.json().then(data => {
+          console.log('Multipart upload success response:', data);
+          res.json(data);
+        });
       } else {
-        return response.text().then(text => res.send(text));
+        return response.text().then(text => {
+          console.log('Multipart upload text response:', text.substring(0, 100));
+          res.send(text);
+        });
       }
     })
     .catch(error => {
