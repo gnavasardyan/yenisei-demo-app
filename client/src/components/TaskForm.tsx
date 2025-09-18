@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -23,6 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import { tasksApi } from "@/lib/api";
 import type { TaskWithUser, User } from "@/lib/types";
 import { ObjectUploader } from "@/components/ObjectUploader";
@@ -48,7 +49,21 @@ export default function TaskForm({ open, onOpenChange, task, users }: TaskFormPr
   const [uploading, setUploading] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const { toast } = useToast();
+  const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
+
+  // Фильтруем пользователей на основе роли
+  const availableUsers = useMemo(() => {
+    if (!currentUser || !users.length) return [];
+    
+    // Администраторы могут назначать на любого пользователя
+    if (currentUser.role === 'admin') {
+      return users;
+    }
+    
+    // Обычные пользователи могут назначать только на себя
+    return users.filter(user => user.id === currentUser.id);
+  }, [users, currentUser]);
 
   const form = useForm<TaskFormData>({
     resolver: zodResolver(taskSchema),
@@ -304,7 +319,7 @@ export default function TaskForm({ open, onOpenChange, task, users }: TaskFormPr
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="unassigned">Не назначен</SelectItem>
-                        {users.map((user) => (
+                        {availableUsers.map((user) => (
                           <SelectItem key={user.id} value={user.id}>
                             {user.username}
                           </SelectItem>
