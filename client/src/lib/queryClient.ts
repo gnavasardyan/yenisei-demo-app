@@ -24,9 +24,18 @@ export async function apiRequest(
   
   // Создаем заголовки
   const headers: Record<string, string> = {};
+  let body: any;
+  
   if (data) {
-    headers["Content-Type"] = "application/json";
+    if (data instanceof FormData) {
+      // For FormData, don't set Content-Type - let browser set it with boundary
+      body = data;
+    } else {
+      headers["Content-Type"] = "application/json";
+      body = JSON.stringify(data);
+    }
   }
+  
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
@@ -34,7 +43,7 @@ export async function apiRequest(
   const res = await fetch(url, {
     method,
     headers,
-    body: data ? JSON.stringify(data) : undefined,
+    body,
     credentials: "include",
   });
 

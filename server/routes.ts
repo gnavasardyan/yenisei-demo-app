@@ -169,52 +169,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     
     // Handle multipart uploads and form-encoded data specially
-    if (req.method !== 'GET' && req.method !== 'HEAD' && 
-        (req.headers['content-type']?.includes('multipart/form-data') || 
-         req.headers['content-type']?.includes('application/x-www-form-urlencoded'))) {
-      
-      console.log('Proxying special request to:', targetUrl, 'Content-Type:', req.headers['content-type']);
-      console.log('Request body type:', typeof req.body, 'body:', req.body);
-      
-      // Use existing parsed body for form-encoded data
-      let body: string;
-      try {
-        if (req.body && typeof req.body === 'object') {
-          console.log('Processing object body');
-          const params = new URLSearchParams();
-          for (const [key, value] of Object.entries(req.body)) {
-            params.append(key, String(value));
-          }
-          body = params.toString();
-        } else {
-          console.log('Processing string body');
-          body = String(req.body || '');
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      if (req.headers['content-type']?.includes('multipart/form-data')) {
+        // Stream multipart/form-data directly without parsing
+        console.log('Proxying multipart upload to:', targetUrl, 'Content-Type:', req.headers['content-type']);
+        
+        // Remove content-length to let fetch handle it properly
+        if (headers['content-length']) {
+          delete headers['content-length'];
         }
         
-        console.log('Sending form body:', body);
-      } catch (error) {
-        console.log('Body processing error:', error);
-        body = '';
-      }
-      
-      fetch(targetUrl, {
-        method: req.method,
-        headers,
-        body,
-      })
-      .then(response => {
-        res.status(response.status);
-        if (response.headers.get('content-type')?.includes('application/json')) {
-          return response.json().then(data => res.json(data));
-        } else {
-          return response.text().then(text => res.send(text));
+        // Stream the raw request body to the target URL
+        fetch(targetUrl, {
+          method: req.method,
+          headers,
+          body: req as any, // Stream the request directly
+          duplex: 'half' as any,
+        })
+        .then(response => {
+          res.status(response.status);
+          // Copy response headers
+          response.headers.forEach((value, key) => {
+            if (!['content-encoding', 'transfer-encoding', 'content-length'].includes(key.toLowerCase())) {
+              res.setHeader(key, value);
+            }
+          });
+          
+          if (response.headers.get('content-type')?.includes('application/json')) {
+            return response.json().then(data => res.json(data));
+          } else {
+            return response.text().then(text => res.send(text));
+          }
+        })
+        .catch(error => {
+          console.error('Multipart proxy error:', error);
+          res.status(500).json({ error: 'File upload failed' });
+        });
+        return; // Don't continue with regular fetch
+      } else if (req.headers['content-type']?.includes('application/x-www-form-urlencoded')) {
+        // Handle form-encoded data with URLSearchParams
+        console.log('Proxying form-encoded request to:', targetUrl, 'Content-Type:', req.headers['content-type']);
+        console.log('Request body type:', typeof req.body, 'body:', req.body);
+        
+        let body: string;
+        try {
+          if (req.body && typeof req.body === 'object') {
+            console.log('Processing object body');
+            const params = new URLSearchParams();
+            for (const [key, value] of Object.entries(req.body)) {
+              params.append(key, String(value));
+            }
+            body = params.toString();
+          } else {
+            console.log('Processing string body');
+            body = String(req.body || '');
+          }
+          
+          console.log('Sending form body:', body);
+        } catch (error) {
+          console.log('Body processing error:', error);
+          body = '';
         }
-      })
-      .catch(error => {
-        console.error('Special proxy error:', error);
-        res.status(500).json({ error: 'Special request failed' });
-      });
-      return; // Don't continue with regular fetch
+        
+        fetch(targetUrl, {
+          method: req.method,
+          headers,
+          body,
+        })
+        .then(response => {
+          res.status(response.status);
+          if (response.headers.get('content-type')?.includes('application/json')) {
+            return response.json().then(data => res.json(data));
+          } else {
+            return response.text().then(text => res.send(text));
+          }
+        })
+        .catch(error => {
+          console.error('Form-encoded proxy error:', error);
+          res.status(500).json({ error: 'Form request failed' });
+        });
+        return; // Don't continue with regular fetch
+      }
     }
     
     // Prepare body for non-multipart requests
