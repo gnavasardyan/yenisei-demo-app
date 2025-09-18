@@ -127,7 +127,7 @@ export const dashboardApi = {
 // Authentication API
 export const authApi = {
   login: async (credentials: LoginRequest): Promise<LoginResponse> => {
-    const response = await fetch(`https://qdr.equiron.com/auth/login`, {
+    const response = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -144,7 +144,7 @@ export const authApi = {
   },
 
   register: async (data: RegisterRequest): Promise<void> => {
-    const response = await fetch(`https://qdr.equiron.com/auth/register`, {
+    const response = await fetch(`${API_BASE}/auth/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
