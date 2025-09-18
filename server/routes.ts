@@ -43,6 +43,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Special handling for comment endpoints
+  app.post("/api/tasks/:id/comment", async (req, res) => {
+    try {
+      const { comment } = req.body;
+      const taskId = req.params.id;
+      
+      console.log('Adding comment to task:', taskId, comment);
+      
+      const response = await fetch(`https://qdr.equiron.com/tasks/${taskId}/comment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({ comment }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        res.json(data);
+      } else {
+        const errorText = await response.text();
+        console.log('Comment API error:', response.status, errorText);
+        res.status(response.status).json({ error: 'Failed to add comment' });
+      }
+    } catch (error) {
+      console.error('Comment proxy error:', error);
+      res.status(500).json({ error: 'Comment service error' });
+    }
+  });
+
   // Proxy all other API requests to the external backend
   app.use("/api", (req, res) => {
     // Build target URL with query parameters

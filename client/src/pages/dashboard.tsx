@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import StatsCard from "@/components/StatsCard";
@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useAuth } from "@/contexts/AuthContext";
 import { dashboardApi, tasksApi, usersApi } from "@/lib/api";
 import type { TaskWithUser, UserWithStats } from "@/lib/types";
 import { 
@@ -32,11 +33,7 @@ export default function Dashboard() {
   const [selectedUser, setSelectedUser] = useState<UserWithStats | null>(null);
   const [userTasks, setUserTasks] = useState<TaskWithUser[]>([]);
   const [, setLocation] = useLocation();
-
-  const { data: stats, isLoading: statsLoading } = useQuery({
-    queryKey: ["/api/dashboard/stats"],
-    queryFn: dashboardApi.getStats,
-  });
+  const { user: currentUser } = useAuth();
 
   const { data: tasks = [], isLoading: tasksLoading } = useQuery({
     queryKey: ["/api/tasks/"],
@@ -48,23 +45,60 @@ export default function Dashboard() {
     queryFn: usersApi.getAll,
   });
 
+  // Фильтруем задачи по ролям: обычные пользователи видят только свои задачи
+  const filteredTasks = useMemo(() => {
+    if (!currentUser) return [];
+    
+    // Администраторы видят все задачи
+    if (currentUser.role === 'admin') {
+      return tasks;
+    }
+    
+    // Обычные пользователи видят только свои задачи
+    return tasks.filter(task => task.user_id === currentUser.id);
+  }, [tasks, currentUser]);
+
+  // Локальная статистика на основе отфильтрованных задач
+  const localStats = useMemo(() => {
+    if (!currentUser) return { totalTasks: 0, activeUsers: 0, completedTasks: 0, inProgressTasks: 0 };
+    
+    return {
+      totalTasks: filteredTasks.length,
+      activeUsers: currentUser.role === 'admin' ? users.length : 1, // Для обычных пользователей только они сами
+      completedTasks: filteredTasks.filter(t => t.status === "done").length,
+      inProgressTasks: filteredTasks.filter(t => t.status === "assigned").length,
+    };
+  }, [filteredTasks, users, currentUser]);
+
+  const { data: globalStats, isLoading: statsLoading } = useQuery({
+    queryKey: ["/api/dashboard/stats"],
+    queryFn: dashboardApi.getStats,
+  });
+
+  // Используем локальную статистику для обычных пользователей
+  const stats = currentUser?.role === 'admin' ? globalStats : localStats;
+
   // Get recent tasks (last 5)
-  const recentTasks = tasks
+  const recentTasks = filteredTasks
     .sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime())
     .slice(0, 5);
 
-  // Get users with task stats
-  const usersWithStats: UserWithStats[] = users.map(user => {
-    const userTasks = tasks.filter(task => task.user_id === user.id);
-    return {
-      ...user,
-      taskStats: {
-        total: userTasks.length,
-        completed: userTasks.filter(task => task.status === "done").length,
-        inProgress: userTasks.filter(task => task.status === "assigned").length,
-      }
-    };
-  }).slice(0, 5);
+  // Get users with task stats (только для админов)
+  const usersWithStats: UserWithStats[] = useMemo(() => {
+    if (!currentUser || currentUser.role !== 'admin') return [];
+    
+    return users.map(user => {
+      const userTasks = tasks.filter(task => task.user_id === user.id);
+      return {
+        ...user,
+        taskStats: {
+          total: userTasks.length,
+          completed: userTasks.filter(task => task.status === "done").length,
+          inProgress: userTasks.filter(task => task.status === "assigned").length,
+        }
+      };
+    }).slice(0, 5);
+  }, [users, tasks, currentUser]);
 
   const handleTaskClick = (task: TaskWithUser) => {
     setSelectedTask(task);

@@ -5,6 +5,13 @@ export interface User {
   created_at?: string;
 }
 
+export interface Comment {
+  id: string;
+  comment: string;
+  author: string;
+  created_at: string;
+}
+
 export interface Task {
   id: string;
   name: string;
@@ -13,6 +20,7 @@ export interface Task {
   user_id?: string;
   created_at?: string;
   attachments?: any;
+  comments?: Comment[];
 }
 
 export interface TaskWithUser extends Task {

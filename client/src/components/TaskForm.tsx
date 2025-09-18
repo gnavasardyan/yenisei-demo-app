@@ -285,24 +285,40 @@ export default function TaskForm({ open, onOpenChange, task, users }: TaskFormPr
               <FormField
                 control={form.control}
                 name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Статус</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="task-status-select">
-                          <SelectValue placeholder="Выберите статус" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="created">Создана</SelectItem>
-                        <SelectItem value="assigned">Назначена</SelectItem>
-                        <SelectItem value="done">Выполнена</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  // Проверяем может ли пользователь редактировать статус
+                  const canEditStatus = !task || !currentUser || 
+                                      currentUser.role === 'admin' || 
+                                      task.user_id === currentUser.id;
+                  
+                  return (
+                    <FormItem>
+                      <FormLabel>Статус</FormLabel>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        value={field.value}
+                        disabled={!canEditStatus}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="task-status-select">
+                            <SelectValue placeholder="Выберите статус" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="created">Создана</SelectItem>
+                          <SelectItem value="assigned">Назначена</SelectItem>
+                          <SelectItem value="done">Выполнена</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {!canEditStatus && (
+                        <p className="text-xs text-muted-foreground">
+                          Только автор задачи может изменять её статус
+                        </p>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
 
               <FormField

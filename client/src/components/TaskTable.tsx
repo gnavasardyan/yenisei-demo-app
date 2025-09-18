@@ -7,9 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import { tasksApi } from "@/lib/api";
 import type { TaskWithUser, User } from "@/lib/types";
-import { Edit, UserPlus, Trash2, Paperclip } from "lucide-react";
+import { Edit, UserPlus, Trash2, Paperclip, Eye } from "lucide-react";
 
 interface TaskTableProps {
   tasks: TaskWithUser[];
@@ -30,6 +31,7 @@ export default function TaskTable({ tasks, users, onEditTask, onAssignTask, onVi
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [userFilter, setUserFilter] = useState<string>("all");
   const { toast } = useToast();
+  const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
 
   const deleteTaskMutation = useMutation({
@@ -200,31 +202,65 @@ export default function TaskTable({ tasks, users, onEditTask, onAssignTask, onVi
                     </td>
                     <td className="p-4">
                       <div className="flex items-center space-x-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onEditTask(task)}
-                          data-testid={`edit-task-${task.id}`}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onAssignTask(task)}
-                          data-testid={`assign-task-${task.id}`}
-                        >
-                          <UserPlus className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteTask(task.id)}
-                          disabled={deleteTaskMutation.isPending}
-                          data-testid={`delete-task-${task.id}`}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        {(() => {
+                          const canEdit = !currentUser || 
+                                        currentUser.role === 'admin' || 
+                                        task.user_id === currentUser.id;
+                          
+                          if (canEdit) {
+                            return (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => onEditTask(task)}
+                                  data-testid={`edit-task-${task.id}`}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => onAssignTask(task)}
+                                  data-testid={`assign-task-${task.id}`}
+                                >
+                                  <UserPlus className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeleteTask(task.id)}
+                                  disabled={deleteTaskMutation.isPending}
+                                  data-testid={`delete-task-${task.id}`}
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </>
+                            );
+                          } else {
+                            return (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => onViewTask(task)}
+                                  data-testid={`view-task-${task.id}`}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => onViewTask(task)}
+                                  data-testid={`attach-task-${task.id}`}
+                                  title="Добавить файл"
+                                >
+                                  <Paperclip className="h-4 w-4" />
+                                </Button>
+                              </>
+                            );
+                          }
+                        })()}
                       </div>
                     </td>
                   </tr>

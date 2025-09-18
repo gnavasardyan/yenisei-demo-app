@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import { tasksApi, usersApi } from "@/lib/api";
-import type { TaskWithUser } from "@/lib/types";
+import type { TaskWithUser, Comment } from "@/lib/types";
 import { 
   Calendar, 
   User, 
@@ -15,7 +17,9 @@ import {
   Paperclip, 
   Edit, 
   Trash2, 
-  CloudUpload 
+  CloudUpload,
+  MessageSquare,
+  Send
 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -41,7 +45,10 @@ export default function TaskDetailsModal({
 }: TaskDetailsModalProps) {
   const [uploading, setUploading] = useState(false);
   const [selectedAttachment, setSelectedAttachment] = useState<string | null>(null);
+  const [newComment, setNewComment] = useState("");
+  const [addingComment, setAddingComment] = useState(false);
   const { toast } = useToast();
+  const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
 
   // Проверяем, есть ли вложения у задачи
@@ -128,6 +135,28 @@ export default function TaskDetailsModal({
     },
   });
 
+  const addCommentMutation = useMutation({
+    mutationFn: ({ taskId, comment }: { taskId: string; comment: string }) =>
+      tasksApi.addComment(taskId, comment),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks/"] });
+      toast({
+        title: "Успех",
+        description: "Комментарий успешно добавлен",
+      });
+      setNewComment("");
+      setAddingComment(false);
+    },
+    onError: () => {
+      toast({
+        title: "Ошибка",
+        description: "Не удалось добавить комментарий",
+        variant: "destructive",
+      });
+      setAddingComment(false);
+    },
+  });
+
   const handleDeleteTask = () => {
     if (!task) return;
     if (confirm("Вы уверены, что хотите удалить эту задачу?")) {
@@ -143,6 +172,12 @@ export default function TaskDetailsModal({
         uploadAttachmentMutation.mutate({ taskId: task.id, file });
       });
     }
+  };
+
+  const handleAddComment = () => {
+    if (!task || !newComment.trim()) return;
+    setAddingComment(true);
+    addCommentMutation.mutate({ taskId: task.id, comment: newComment.trim() });
   };
 
   if (!task) return null;
@@ -496,6 +531,87 @@ export default function TaskDetailsModal({
               </CardContent>
             </Card>
           )}
+
+          {/* Комментарии */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center space-x-2">
+                <MessageSquare className="h-5 w-5" />
+                <span>Комментарии</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {/* Отображение существующих комментариев */}
+              {task.comments && task.comments.length > 0 ? (
+                <div className="space-y-4 mb-6">
+                  {task.comments.map((comment, index) => (
+                    <div
+                      key={index}
+                      className="flex space-x-3 p-3 border rounded-lg"
+                      data-testid={`comment-${index}`}
+                    >
+                      <Avatar className="w-8 h-8">
+                        <AvatarFallback className="text-xs">
+                          {comment.author ? comment.author.charAt(0).toUpperCase() : '?'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <span className="text-sm font-medium">{comment.author}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {comment.created_at ? format(new Date(comment.created_at), "dd.MM.yyyy HH:mm", { locale: ru }) : ""}
+                          </span>
+                        </div>
+                        <p className="text-sm whitespace-pre-wrap">{comment.comment}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6 mb-6">
+                  <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground/50" />
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Комментариев пока нет
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Добавьте первый комментарий ниже
+                  </p>
+                </div>
+              )}
+
+              {/* Форма добавления комментария */}
+              <div className="border-t pt-4">
+                <div className="flex space-x-3">
+                  <Avatar className="w-8 h-8">
+                    <AvatarFallback className="text-xs">
+                      {currentUser?.username?.charAt(0).toUpperCase() || 'У'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 space-y-3">
+                    <Textarea
+                      placeholder="Добавить комментарий..."
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      rows={3}
+                      disabled={addingComment}
+                      data-testid="comment-input"
+                    />
+                    <div className="flex justify-end">
+                      <Button
+                        size="sm"
+                        onClick={handleAddComment}
+                        disabled={addingComment || !newComment.trim()}
+                        data-testid="add-comment-button"
+                      >
+                        <Send className="h-4 w-4 mr-2" />
+                        {addingComment ? "Добавление..." : "Добавить комментарий"}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Кнопка удаления внизу */}
           <div className="flex justify-end pt-4">

@@ -65,6 +65,18 @@ export const tasksApi = {
     if (!response.ok) throw new Error("Failed to fetch task with attachment");
     return response.json();
   },
+
+  addComment: async (id: string, comment: string): Promise<void> => {
+    const response = await fetch(`${API_BASE}/tasks/${id}/comment`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ comment }),
+    });
+    
+    if (!response.ok) throw new Error("Failed to add comment");
+  },
 };
 
 // Users API
