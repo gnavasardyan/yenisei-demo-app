@@ -43,36 +43,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Special handling for comment endpoints
-  app.post("/api/tasks/:id/comment", async (req, res) => {
+  // Special handling for adding text to task description
+  app.post("/api/tasks/:id/add-to-description", async (req, res) => {
     try {
-      const { comment } = req.body;
+      const { additionalText } = req.body;
       const taskId = req.params.id;
       
-      console.log('Adding comment to task:', taskId, comment);
+      console.log('Adding text to task description:', taskId, additionalText);
       
-      const response = await fetch(`https://qdr.equiron.com/tasks/${taskId}/comment`, {
-        method: 'POST',
+      // First get the current task
+      const getResponse = await fetch(`https://qdr.equiron.com/tasks/${taskId}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!getResponse.ok) {
+        return res.status(getResponse.status).json({ error: 'Failed to fetch task' });
+      }
+
+      const taskData = await getResponse.json();
+      const task = taskData.task || taskData;
+      
+      // Append the new text to existing description
+      const currentDescription = task.description || '';
+      const newDescription = currentDescription ? 
+        `${currentDescription}\n\n---\n${additionalText}` : 
+        additionalText;
+      
+      // Update the task with new description
+      const updateResponse = await fetch(`https://qdr.equiron.com/tasks/${taskId}`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        body: JSON.stringify({ comment }),
+        body: JSON.stringify({
+          ...task,
+          description: newDescription
+        }),
       });
 
-      if (response.ok) {
-        const data = await response.json();
+      if (updateResponse.ok) {
+        const data = await updateResponse.json();
         res.json(data);
       } else {
-        const errorText = await response.text();
-        console.log('Comment API error:', response.status, errorText);
-        res.status(response.status).json({ error: 'Failed to add comment' });
+        const errorText = await updateResponse.text();
+        console.log('Update task description API error:', updateResponse.status, errorText);
+        res.status(updateResponse.status).json({ error: 'Failed to update task description' });
       }
     } catch (error) {
-      console.error('Comment proxy error:', error);
-      res.status(500).json({ error: 'Comment service error' });
+      console.error('Add to description proxy error:', error);
+      res.status(500).json({ error: 'Add to description service error' });
     }
   });
+
+  // Admin-only middleware for user management endpoints
+  const requireAdmin = (req: any, res: any, next: any) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'No authorization token' });
+    }
+
+    // For now, we'll trust the JWT token from the client side check
+    // In production, you'd decode and verify the JWT token here
+    // For this demo, we'll assume admin role based on token presence
+    // Real implementation would decode JWT and check role
+    next();
+  };
+
+  // Apply admin middleware to user management routes
+  app.use("/api/users", requireAdmin);
 
   // Proxy all other API requests to the external backend
   app.use("/api", (req, res) => {
@@ -93,6 +135,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         headers[key] = value;
       }
     });
+
+    // Ensure Authorization header is forwarded for all requests
+    if (req.headers.authorization) {
+      headers['authorization'] = req.headers.authorization;
+    }
     
     // Don't force JSON Content-Type for GET/HEAD requests or if content-type is already set
     if (!req.headers['content-type'] && req.method !== 'GET' && req.method !== 'HEAD') {

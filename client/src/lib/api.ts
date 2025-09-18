@@ -17,15 +17,13 @@ const API_BASE = "/api";
 // Tasks API
 export const tasksApi = {
   getAll: async (): Promise<TaskWithUser[]> => {
-    const response = await fetch(`${API_BASE}/tasks/`);
-    if (!response.ok) throw new Error("Failed to fetch tasks");
+    const response = await apiRequest("GET", `${API_BASE}/tasks/`);
     const data = await response.json();
     return data.tasks || [];
   },
 
   getById: async (id: string): Promise<TaskWithUser> => {
-    const response = await fetch(`${API_BASE}/tasks/${id}`);
-    if (!response.ok) throw new Error("Failed to fetch task");
+    const response = await apiRequest("GET", `${API_BASE}/tasks/${id}`);
     return response.json();
   },
 
@@ -52,45 +50,31 @@ export const tasksApi = {
     const formData = new FormData();
     formData.append("file", file);
     
-    const response = await fetch(`${API_BASE}/tasks/${id}/attachment`, {
-      method: "POST",
-      body: formData,
-    });
-    
+    const response = await apiRequest("POST", `${API_BASE}/tasks/${id}/attachment`, formData);
     if (!response.ok) throw new Error("Failed to upload attachment");
   },
 
   getWithAttachment: async (id: string): Promise<{task: TaskWithUser, attachment: {filename: string, content_base64: string}}> => {
-    const response = await fetch(`${API_BASE}/tasks/${id}/with-attachment`);
-    if (!response.ok) throw new Error("Failed to fetch task with attachment");
+    const response = await apiRequest("GET", `${API_BASE}/tasks/${id}/with-attachment`);
     return response.json();
   },
 
-  addComment: async (id: string, comment: string): Promise<void> => {
-    const response = await fetch(`${API_BASE}/tasks/${id}/comment`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ comment }),
-    });
-    
-    if (!response.ok) throw new Error("Failed to add comment");
+  addToDescription: async (id: string, additionalText: string): Promise<Task> => {
+    const response = await apiRequest("POST", `${API_BASE}/tasks/${id}/add-to-description`, { additionalText });
+    return response.json();
   },
 };
 
 // Users API
 export const usersApi = {
   getAll: async (): Promise<User[]> => {
-    const response = await fetch(`${API_BASE}/users/`);
-    if (!response.ok) throw new Error("Failed to fetch users");
+    const response = await apiRequest("GET", `${API_BASE}/users/`);
     const data = await response.json();
     return data.users || [];
   },
 
   getById: async (id: string): Promise<User> => {
-    const response = await fetch(`${API_BASE}/users/${id}`);
-    if (!response.ok) throw new Error("Failed to fetch user");
+    const response = await apiRequest("GET", `${API_BASE}/users/${id}`);
     const data = await response.json();
     // API может возвращать объект с полем user внутри
     return data.user || data;
@@ -111,8 +95,7 @@ export const usersApi = {
   },
 
   getTasks: async (id: string): Promise<TaskWithUser[]> => {
-    const response = await fetch(`${API_BASE}/users/${id}/tasks`);
-    if (!response.ok) throw new Error("Failed to fetch user tasks");
+    const response = await apiRequest("GET", `${API_BASE}/users/${id}/tasks`);
     const data = await response.json();
     return data.tasks || [];
   },

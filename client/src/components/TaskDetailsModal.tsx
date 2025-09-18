@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { tasksApi, usersApi } from "@/lib/api";
-import type { TaskWithUser, Comment } from "@/lib/types";
+import type { TaskWithUser } from "@/lib/types";
 import { 
   Calendar, 
   User, 
@@ -19,7 +19,7 @@ import {
   Trash2, 
   CloudUpload,
   MessageSquare,
-  Send
+  Plus
 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -45,8 +45,8 @@ export default function TaskDetailsModal({
 }: TaskDetailsModalProps) {
   const [uploading, setUploading] = useState(false);
   const [selectedAttachment, setSelectedAttachment] = useState<string | null>(null);
-  const [newComment, setNewComment] = useState("");
-  const [addingComment, setAddingComment] = useState(false);
+  const [newText, setNewText] = useState("");
+  const [addingText, setAddingText] = useState(false);
   const { toast } = useToast();
   const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
@@ -135,25 +135,25 @@ export default function TaskDetailsModal({
     },
   });
 
-  const addCommentMutation = useMutation({
-    mutationFn: ({ taskId, comment }: { taskId: string; comment: string }) =>
-      tasksApi.addComment(taskId, comment),
+  const addToDescriptionMutation = useMutation({
+    mutationFn: ({ taskId, additionalText }: { taskId: string; additionalText: string }) =>
+      tasksApi.addToDescription(taskId, additionalText),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/"] });
       toast({
         title: "Успех",
-        description: "Комментарий успешно добавлен",
+        description: "Текст успешно добавлен к описанию задачи",
       });
-      setNewComment("");
-      setAddingComment(false);
+      setNewText("");
+      setAddingText(false);
     },
     onError: () => {
       toast({
         title: "Ошибка",
-        description: "Не удалось добавить комментарий",
+        description: "Не удалось добавить текст к описанию",
         variant: "destructive",
       });
-      setAddingComment(false);
+      setAddingText(false);
     },
   });
 
@@ -174,10 +174,11 @@ export default function TaskDetailsModal({
     }
   };
 
-  const handleAddComment = () => {
-    if (!task || !newComment.trim()) return;
-    setAddingComment(true);
-    addCommentMutation.mutate({ taskId: task.id, comment: newComment.trim() });
+  const handleAddToDescription = () => {
+    if (!task || !newText.trim()) return;
+    setAddingText(true);
+    const textWithAuthor = `[${currentUser?.username || 'Пользователь'}, ${new Date().toLocaleDateString('ru-RU')} ${new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}]: ${newText.trim()}`;
+    addToDescriptionMutation.mutate({ taskId: task.id, additionalText: textWithAuthor });
   };
 
   if (!task) return null;
@@ -532,55 +533,20 @@ export default function TaskDetailsModal({
             </Card>
           )}
 
-          {/* Комментарии */}
+          {/* Добавление к описанию */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg flex items-center space-x-2">
                 <MessageSquare className="h-5 w-5" />
-                <span>Комментарии</span>
+                <span>Добавить к описанию</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {/* Отображение существующих комментариев */}
-              {task.comments && task.comments.length > 0 ? (
-                <div className="space-y-4 mb-6">
-                  {task.comments.map((comment, index) => (
-                    <div
-                      key={index}
-                      className="flex space-x-3 p-3 border rounded-lg"
-                      data-testid={`comment-${index}`}
-                    >
-                      <Avatar className="w-8 h-8">
-                        <AvatarFallback className="text-xs">
-                          {comment.author ? comment.author.charAt(0).toUpperCase() : '?'}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <span className="text-sm font-medium">{comment.author}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {comment.created_at ? format(new Date(comment.created_at), "dd.MM.yyyy HH:mm", { locale: ru }) : ""}
-                          </span>
-                        </div>
-                        <p className="text-sm whitespace-pre-wrap">{comment.comment}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-6 mb-6">
-                  <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground/50" />
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    Комментариев пока нет
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Добавьте первый комментарий ниже
-                  </p>
-                </div>
-              )}
-
-              {/* Форма добавления комментария */}
-              <div className="border-t pt-4">
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Добавьте дополнительную информацию или комментарий к задаче.
+                  Текст будет добавлен к описанию задачи с указанием автора и времени.
+                </p>
                 <div className="flex space-x-3">
                   <Avatar className="w-8 h-8">
                     <AvatarFallback className="text-xs">
@@ -589,22 +555,22 @@ export default function TaskDetailsModal({
                   </Avatar>
                   <div className="flex-1 space-y-3">
                     <Textarea
-                      placeholder="Добавить комментарий..."
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
+                      placeholder="Добавить информацию к описанию..."
+                      value={newText}
+                      onChange={(e) => setNewText(e.target.value)}
                       rows={3}
-                      disabled={addingComment}
-                      data-testid="comment-input"
+                      disabled={addingText}
+                      data-testid="add-text-input"
                     />
                     <div className="flex justify-end">
                       <Button
                         size="sm"
-                        onClick={handleAddComment}
-                        disabled={addingComment || !newComment.trim()}
-                        data-testid="add-comment-button"
+                        onClick={handleAddToDescription}
+                        disabled={addingText || !newText.trim()}
+                        data-testid="add-text-button"
                       >
-                        <Send className="h-4 w-4 mr-2" />
-                        {addingComment ? "Добавление..." : "Добавить комментарий"}
+                        <Plus className="h-4 w-4 mr-2" />
+                        {addingText ? "Добавление..." : "Добавить к описанию"}
                       </Button>
                     </div>
                   </div>
