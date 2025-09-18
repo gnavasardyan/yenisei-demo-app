@@ -54,8 +54,13 @@ export default function Dashboard() {
       return tasks;
     }
     
-    // Обычные пользователи видят только свои задачи
-    return tasks.filter(task => task.user_id === currentUser.id);
+    // Обычные пользователи видят только свои назначенные задачи
+    // Важно: сравниваем как строки и проверяем что user_id не пустой
+    const filtered = tasks.filter(task => {
+      return task.user_id && String(task.user_id) === String(currentUser.id);
+    });
+    
+    return filtered;
   }, [tasks, currentUser]);
 
   // Локальная статистика на основе отфильтрованных задач
@@ -88,7 +93,7 @@ export default function Dashboard() {
     if (!currentUser || currentUser.role !== 'admin') return [];
     
     return users.map(user => {
-      const userTasks = tasks.filter(task => task.user_id === user.id);
+      const userTasks = tasks.filter(task => task.user_id && String(task.user_id) === String(user.id));
       return {
         ...user,
         taskStats: {
@@ -170,7 +175,7 @@ export default function Dashboard() {
       </div>
 
       {/* Recent Tasks and Active Users */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className={`grid grid-cols-1 gap-6 ${currentUser?.role === 'admin' ? 'lg:grid-cols-2' : ''}`}>
         {/* Recent Tasks */}
         <Card data-testid="recent-tasks-card">
           <CardHeader className="border-b border-border">
@@ -195,7 +200,12 @@ export default function Dashboard() {
               </div>
             ) : recentTasks.length === 0 ? (
               <div className="p-8 text-center text-muted-foreground">
-                Нет задач для отображения
+                <div className="mb-2">Нет назначенных задач</div>
+                {currentUser?.role !== 'admin' && (
+                  <div className="text-xs">
+                    Задачи появятся здесь, когда администратор назначит их на вас
+                  </div>
+                )}
               </div>
             ) : (
               recentTasks.map((task) => (
@@ -240,67 +250,69 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Active Users */}
-        <Card data-testid="active-users-card">
-          <CardHeader className="border-b border-border">
-            <div className="flex items-center justify-between">
-              <CardTitle>Активные пользователи</CardTitle>
-              <Button 
-                variant="link" 
-                size="sm" 
-                data-testid="manage-users"
-                onClick={() => setLocation('/users')}
-              >
-                Управление
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            {usersLoading ? (
-              <div className="p-4 space-y-4">
-                {[...Array(3)].map((_, i) => (
-                  <Skeleton key={i} className="h-16 w-full" />
-                ))}
-              </div>
-            ) : usersWithStats.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground">
-                Нет пользователей для отображения
-              </div>
-            ) : (
-              usersWithStats.map((user) => (
-                <div
-                  key={user.id}
-                  className="p-4 border-b border-border last:border-b-0 hover:bg-muted/50 transition-colors cursor-pointer"
-                  data-testid={`active-user-${user.id}`}
-                  onClick={() => handleUserClick(user)}
+        {/* Active Users - только для админов */}
+        {currentUser?.role === 'admin' && (
+          <Card data-testid="active-users-card">
+            <CardHeader className="border-b border-border">
+              <div className="flex items-center justify-between">
+                <CardTitle>Активные пользователи</CardTitle>
+                <Button 
+                  variant="link" 
+                  size="sm" 
+                  data-testid="manage-users"
+                  onClick={() => setLocation('/users')}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <Avatar className="w-10 h-10">
-                        <AvatarFallback>
-                          {user.username.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <h4 className="font-medium" data-testid={`user-name-${user.id}`}>
-                          {user.username}
-                        </h4>
+                  Управление
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              {usersLoading ? (
+                <div className="p-4 space-y-4">
+                  {[...Array(3)].map((_, i) => (
+                    <Skeleton key={i} className="h-16 w-full" />
+                  ))}
+                </div>
+              ) : usersWithStats.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground">
+                  Нет пользователей для отображения
+                </div>
+              ) : (
+                usersWithStats.map((user) => (
+                  <div
+                    key={user.id}
+                    className="p-4 border-b border-border last:border-b-0 hover:bg-muted/50 transition-colors cursor-pointer"
+                    data-testid={`active-user-${user.id}`}
+                    onClick={() => handleUserClick(user)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <Avatar className="w-10 h-10">
+                          <AvatarFallback>
+                            {user.username.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <h4 className="font-medium" data-testid={`user-name-${user.id}`}>
+                            {user.username}
+                          </h4>
+                        </div>
                       </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-sm font-medium" data-testid={`user-task-count-${user.id}`}>
-                        {user.taskStats.total} задач
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {user.taskStats.completed} выполнено
+                      <div className="text-right">
+                        <div className="text-sm font-medium" data-testid={`user-task-count-${user.id}`}>
+                          {user.taskStats.total} задач
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {user.taskStats.completed} выполнено
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Task Details Modal */}
