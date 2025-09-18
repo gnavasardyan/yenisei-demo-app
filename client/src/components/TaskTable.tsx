@@ -179,10 +179,10 @@ export default function TaskTable({ tasks, users, onEditTask, onAssignTask, onVi
                     </td>
                     <td className="p-4">
                       <Badge 
-                        className={statusConfig[task.status].color}
+                        className={statusConfig[task.status]?.color || "bg-muted/10 text-muted-foreground"}
                         data-testid={`task-status-${task.id}`}
                       >
-                        {statusConfig[task.status].label}
+                        {statusConfig[task.status]?.label || task.status || "Неизвестно"}
                       </Badge>
                     </td>
                     <td className="p-4">
