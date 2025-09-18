@@ -74,6 +74,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const taskData = await getResponse.json();
       const task = taskData.task || taskData;
       
+      console.log('Original task data:', JSON.stringify(task, null, 2));
+      
       // Append the new text to existing description
       const currentDescription = task.description || '';
       const newDescription = currentDescription ? 
@@ -84,7 +86,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updateData = {
         ...task,
         description: newDescription,
-        // Explicitly preserve important fields
+        // Explicitly preserve important fields to ensure they don't get lost
         status: task.status,
         user_id: task.user_id,
         name: task.name
