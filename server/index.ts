@@ -3,6 +3,64 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
+
+// Handle multipart/form-data uploads BEFORE Express body parsing middleware
+app.use("/api", (req, res, next) => {
+  if (req.method !== 'GET' && req.method !== 'HEAD' && 
+      req.headers['content-type']?.includes('multipart/form-data')) {
+    
+    // Build target URL
+    const targetUrl = `https://qdr.equiron.com${req.originalUrl.replace(/^\/api/, '')}`;
+    
+    console.log('Proxying multipart upload to:', targetUrl, 'Content-Type:', req.headers['content-type']);
+    
+    // Forward headers
+    const headers: Record<string, string> = {};
+    const safeHeaders = ['authorization', 'content-type', 'accept', 'user-agent'];
+    safeHeaders.forEach(key => {
+      const value = req.headers[key];
+      if (typeof value === 'string') {
+        headers[key] = value;
+      }
+    });
+    
+    // Remove content-length to let fetch handle it properly
+    if (headers['content-length']) {
+      delete headers['content-length'];
+    }
+    
+    // Stream the raw request body to the target URL
+    fetch(targetUrl, {
+      method: req.method,
+      headers,
+      body: req as any, // Stream the request directly
+      duplex: 'half' as any,
+    })
+    .then(response => {
+      res.status(response.status);
+      // Copy response headers
+      response.headers.forEach((value, key) => {
+        if (!['content-encoding', 'transfer-encoding', 'content-length'].includes(key.toLowerCase())) {
+          res.setHeader(key, value);
+        }
+      });
+      
+      if (response.headers.get('content-type')?.includes('application/json')) {
+        return response.json().then(data => res.json(data));
+      } else {
+        return response.text().then(text => res.send(text));
+      }
+    })
+    .catch(error => {
+      console.error('Multipart proxy error:', error);
+      res.status(500).json({ error: 'File upload failed' });
+    });
+    return; // Don't continue to next middleware
+  }
+  
+  next(); // Continue to body parsing middleware for non-multipart requests
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
