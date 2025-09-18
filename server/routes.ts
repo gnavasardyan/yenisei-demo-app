@@ -46,7 +46,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Special handling for adding text to task description
   app.post("/api/tasks/:id/add-to-description", async (req, res) => {
     try {
-      const { additionalText } = req.body;
+      const { additionalText, fullTask } = req.body;
       const taskId = req.params.id;
       
       console.log('Adding text to task description:', taskId, additionalText);
@@ -61,20 +61,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         headers['authorization'] = req.headers.authorization;
       }
       
-      // First get the current task
-      const getResponse = await fetch(`https://qdr.equiron.com/tasks/${taskId}`, {
-        method: 'GET',
-        headers,
-      });
+      // Use provided full task data if available, otherwise fetch from API
+      let task;
+      if (fullTask) {
+        task = fullTask;
+        console.log('Using full task from client:', JSON.stringify(task, null, 2));
+      } else {
+        console.log('Fetching task from external API...');
+        const getResponse = await fetch(`https://qdr.equiron.com/tasks/${taskId}`, {
+          method: 'GET',
+          headers,
+        });
 
-      if (!getResponse.ok) {
-        return res.status(getResponse.status).json({ error: 'Failed to fetch task' });
+        if (!getResponse.ok) {
+          return res.status(getResponse.status).json({ error: 'Failed to fetch task' });
+        }
+
+        const taskData = await getResponse.json();
+        task = taskData.task || taskData;
+        console.log('Original task data from API:', JSON.stringify(task, null, 2));
       }
-
-      const taskData = await getResponse.json();
-      const task = taskData.task || taskData;
-      
-      console.log('Original task data:', JSON.stringify(task, null, 2));
       
       // Append the new text to existing description
       const currentDescription = task.description || '';
@@ -82,12 +88,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `${currentDescription}\n\nДобавлено:\n${additionalText}` : 
         additionalText;
       
-      // Update ONLY the description field to preserve other fields
-      const updateData = {
+      // If we have full task data from client, preserve all fields
+      const updateData = fullTask ? {
+        ...task,
+        description: newDescription
+      } : {
         description: newDescription
       };
       
-      console.log('Updating only description field:', JSON.stringify(updateData, null, 2));
+      console.log('Updating task data:', JSON.stringify(updateData, null, 2));
       
       const updateResponse = await fetch(`https://qdr.equiron.com/tasks/${taskId}`, {
         method: 'PUT',

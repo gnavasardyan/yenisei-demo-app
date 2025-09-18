@@ -59,8 +59,8 @@ export const tasksApi = {
     return response.json();
   },
 
-  addToDescription: async (id: string, additionalText: string): Promise<Task> => {
-    const response = await apiRequest("POST", `${API_BASE}/tasks/${id}/add-to-description`, { additionalText });
+  addToDescription: async (id: string, additionalText: string, fullTask?: TaskWithUser): Promise<Task> => {
+    const response = await apiRequest("POST", `${API_BASE}/tasks/${id}/add-to-description`, { additionalText, fullTask });
     return response.json();
   },
 };

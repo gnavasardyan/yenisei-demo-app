@@ -101,7 +101,7 @@ export default function TaskForm({ open, onOpenChange, task, users }: TaskFormPr
   useEffect(() => {
     if (task) {
       form.reset({
-        name: task.name || "",
+        name: task.name || task.title || "", // Используем title как запасной вариант
         description: task.description || "",
         status: task.status || "created",
         user_id: task.user_id || "unassigned",

@@ -136,8 +136,8 @@ export default function TaskDetailsModal({
   });
 
   const addToDescriptionMutation = useMutation({
-    mutationFn: ({ taskId, additionalText }: { taskId: string; additionalText: string }) =>
-      tasksApi.addToDescription(taskId, additionalText),
+    mutationFn: ({ taskId, additionalText, fullTask }: { taskId: string; additionalText: string; fullTask: TaskWithUser }) =>
+      tasksApi.addToDescription(taskId, additionalText, fullTask),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/"] });
       toast({
@@ -178,7 +178,7 @@ export default function TaskDetailsModal({
     if (!task || !newText.trim()) return;
     setAddingText(true);
     const textWithAuthor = `[${currentUser?.username || 'Пользователь'}, ${new Date().toLocaleDateString('ru-RU')} ${new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}]: ${newText.trim()}`;
-    addToDescriptionMutation.mutate({ taskId: task.id, additionalText: textWithAuthor });
+    addToDescriptionMutation.mutate({ taskId: task.id, additionalText: textWithAuthor, fullTask: task });
   };
 
   if (!task) return null;
